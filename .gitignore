@@ -1,0 +1,24 @@
+# OS
+.DS_Store
+
+# Java / Maven
+*.class
+*.jar
+*.war
+*.ear
+**/target/
+
+# Logs
+*.log
+
+# Environment / secrets
+.env
+*.pem
+*.key
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*~

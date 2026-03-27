@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bob-cli
+  labels:
+    app: sre-deploy-demo
+    component: bob-cli
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sre-deploy-demo
+      component: bob-cli
+  template:
+    metadata:
+      labels:
+        app: sre-deploy-demo
+        component: bob-cli
+    spec:
+      serviceAccountName: bob-cli
+      containers:
+      - name: bob-cli
+        image: sre-bob-cli:latest
+        env:
+        - name: BOBSHELL_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: bob-cli-credentials
+              key: BOBSHELL_API_KEY
+        - name: BOB_ACCEPT_LICENSE
+          value: "true"
+        resources:
+          requests:
+            cpu: "10m"
+            memory: "256Mi"
+          limits:
+            cpu: "200m"
+            memory: "2Gi"

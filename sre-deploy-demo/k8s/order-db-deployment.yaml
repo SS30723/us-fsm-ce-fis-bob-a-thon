@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-db
+  labels:
+    app: order-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-db
+  template:
+    metadata:
+      labels:
+        app: order-db
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          value: orders
+        - name: POSTGRES_USER
+          value: orderuser
+        - name: POSTGRES_PASSWORD
+          value: orderpass
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        readinessProbe:
+          exec:
+            command: ["pg_isready", "-U", "orderuser", "-d", "orders"]
+          initialDelaySeconds: 5
+          periodSeconds: 10

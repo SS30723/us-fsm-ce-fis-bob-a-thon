@@ -1,0 +1,6 @@
+.env
+.DS_Store
+order-service/target/
+*.class
+*.jar
+*.log
