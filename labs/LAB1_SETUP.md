@@ -1,6 +1,6 @@
 # Lab 1: Verify Your Environment
 
-**Prerequisite:** Complete [SETUP.md](../../SETUP.md) first — you should have the app, Bob CLI, and Jenkins deployed before starting this lab.
+**Prerequisite:** Complete [SETUP.md](../SETUP.md) first — you should have the app, Bob CLI, and Jenkins deployed before starting this lab.
 
 **Time:** ~10 minutes
 
