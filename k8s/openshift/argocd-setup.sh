@@ -3,7 +3,15 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 NAMESPACE=$(oc project -q)
+
+# ── Load config from .env file if available ───────────────────────────────────
+
+if [ -f "$PROJECT_DIR/.env" ] && [ -z "$GITHUB_REPO_URL" ] && grep -q GITHUB_REPO_URL "$PROJECT_DIR/.env"; then
+    export $(grep GITHUB_REPO_URL "$PROJECT_DIR/.env" | xargs)
+    echo "Loaded GITHUB_REPO_URL from .env file"
+fi
 
 echo "=== Step 1: Install OpenShift GitOps Operator ==="
 
@@ -43,12 +51,15 @@ oc adm policy add-role-to-user admin \
 echo ""
 echo "=== Step 3: Create ArgoCD Application ==="
 
+GITHUB_REPO_URL="${GITHUB_REPO_URL:-https://github.ibm.com/Andy-Madden/sre-project}"
+
 # Apply the Application CR (but only if not already created)
 if oc get application order-service -n openshift-gitops &>/dev/null 2>&1; then
     echo "ArgoCD Application 'order-service' already exists."
 else
-    oc apply -f "$SCRIPT_DIR/argocd-application.yaml"
-    echo "ArgoCD Application created."
+    sed "s|repoURL: .*|repoURL: ${GITHUB_REPO_URL}|g; s|namespace: .*|namespace: ${NAMESPACE}|g" \
+        "$SCRIPT_DIR/argocd-application.yaml" | oc apply -f -
+    echo "ArgoCD Application created (repo: ${GITHUB_REPO_URL})."
 fi
 
 ARGOCD_ROUTE=$(oc get route openshift-gitops-server -n openshift-gitops -o jsonpath='{.spec.host}' 2>/dev/null || echo "")

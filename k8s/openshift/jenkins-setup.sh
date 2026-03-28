@@ -42,12 +42,16 @@ if oc get dc/jenkins &>/dev/null 2>&1 || oc get deployment/jenkins &>/dev/null 2
     JENKINS_ALREADY_DEPLOYED=true
 fi
 
-# ── Load secrets from .env file if available ─────────────────────────────────
+# ── Load config from .env file if available ───────────────────────────────────
 
 if [ -f "$PROJECT_DIR/.env" ]; then
     if [ -z "$GITHUB_PAT" ] && grep -q GITHUB_PAT "$PROJECT_DIR/.env"; then
         export $(grep GITHUB_PAT "$PROJECT_DIR/.env" | xargs)
         echo "Loaded GITHUB_PAT from .env file"
+    fi
+    if [ -z "$GITHUB_REPO_URL" ] && grep -q GITHUB_REPO_URL "$PROJECT_DIR/.env"; then
+        export $(grep GITHUB_REPO_URL "$PROJECT_DIR/.env" | xargs)
+        echo "Loaded GITHUB_REPO_URL from .env file"
     fi
 fi
 

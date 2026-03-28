@@ -6,6 +6,32 @@ This guide walks you through deploying the SRE Deploy Lab to an OpenShift cluste
 
 ---
 
+## Step 0: Fork and clone the repo
+
+Fork this repo to your own GitHub account, then clone your fork:
+
+```bash
+git clone https://github.ibm.com/<your-username>/sre-project
+cd sre-project
+```
+
+Copy the example environment file and fill in your values:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and set:
+- `GITHUB_REPO_URL` — your fork URL (e.g., `https://github.ibm.com/<your-username>/sre-project`)
+- `GITHUB_PAT` — a GitHub Enterprise personal access token with `repo` scope only ([create one here](https://github.ibm.com/settings/tokens))
+- `BOBSHELL_API_KEY` — your Bob Shell API key (check Slack for your welcome message from Ask Bob)
+
+The deploy scripts read these values automatically.
+
+> **Important:** Never commit `.env` to git. It is already in `.gitignore`.
+
+---
+
 ## Prerequisites
 
 Install these tools first (macOS):
@@ -132,23 +158,7 @@ Press `Ctrl+C` once you see `image-registry-xxxxx` at `1/1 Running`.
 
 ---
 
-## Step 6: Add Your Bob Shell API Key
-
-Bob CLI runs inside the cluster and provides AI-assisted SRE operations — analyzing PRs, assessing risk, diagnosing pipeline failures, and recommending fixes. You need a Bob Shell API key before deploying.
-
-Check your Slack history for a welcome message from Ask Bob that includes your key. Then create a `.env` file in the project root:
-
-```
-BOBSHELL_API_KEY=your-key-here
-```
-
-The deploy script reads this file on your machine, creates a Kubernetes Secret on the cluster, and the Bob CLI pod picks up the key from that Secret. The `.env` file stays on your machine — it is not copied into any container.
-
-> **Important:** Never commit the `.env` file to git. It is already in `.gitignore`.
-
----
-
-## Step 7: Deploy the Application
+## Step 6: Deploy the Application
 
 ```bash
 make oc-deploy
@@ -178,7 +188,7 @@ Watch until every pod shows `1/1` under the `READY` column. This may take 1-2 mi
 
 ---
 
-## Step 8: Verify the Deployment
+## Step 7: Verify the Deployment
 
 **Check pod status:**
 ```bash
@@ -189,7 +199,7 @@ All pods should show `Running` with `1/1` ready. It may take 1-2 minutes for all
 
 ---
 
-## Step 9: Deploy ArgoCD
+## Step 8: Deploy ArgoCD
 
 ArgoCD watches your Git repo and syncs the k8s manifests to the cluster. The pipeline uses it for deployments.
 
@@ -207,7 +217,7 @@ oc extract secret/openshift-gitops-cluster -n openshift-gitops --to=-
 
 ---
 
-## Step 10: Deploy Bob CLI
+## Step 9: Deploy Bob CLI
 
 Bob CLI runs as a pod on the cluster. The labs use it to add AI-assisted analysis to the pipeline.
 
@@ -224,11 +234,11 @@ make oc-bob PROMPT="Say hello in one sentence"
 
 ---
 
-## Step 11: Deploy Jenkins
+## Step 10: Deploy Jenkins
 
 This section adds Jenkins CI/CD to your OpenShift deployment so you can run the lab scenarios with a live SRE pipeline — PR analysis, PCI compliance checks, risk assessment, and automated change control.
 
-**Prerequisite:** Complete Steps 1-9 above first.
+**Prerequisite:** Complete Steps 1-9 above first (app, ArgoCD, and Bob CLI deployed).
 
 ### What You'll Need
 
@@ -383,7 +393,7 @@ make pci-check
 
 ## Switching to a New TechZone Environment
 
-When your TechZone reservation expires and you get a new one, just repeat Steps 3-5 and 7 (your `.env` file is already in place):
+When your TechZone reservation expires and you get a new one, just repeat Steps 3-6 (your `.env` file is already in place):
 
 ```bash
 oc login --username=<new-user> --password=<new-password> --server=<new-api-url>
