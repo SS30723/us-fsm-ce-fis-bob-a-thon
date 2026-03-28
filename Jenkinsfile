@@ -103,11 +103,14 @@ spec:
                             def output = sh(script: 'cat ${WORKSPACE}/pci-output.txt | tail -30', returnStdout: true).trim()
                             env.PCI_FAILED = 'true'
                             echo "PCI compliance FAILED. Violations:\n${output}"
-                            unstable("PCI compliance check failed")
                         } else {
                             env.PCI_FAILED = 'false'
                             echo "PCI compliance check passed."
                         }
+                    }
+
+                    if (env.PCI_FAILED == 'true') {
+                        unstable("PCI compliance check failed")
                     }
                 }
             }
@@ -139,10 +142,13 @@ spec:
                             // ╚════════════════════════════════════════════════════╝
 
                             echo "Tests FAILED:\n${testOutput}"
-                            unstable("Unit tests failed")
                         } else {
                             env.TEST_FAILED = 'false'
                         }
+                    }
+
+                    if (env.TEST_FAILED == 'true') {
+                        unstable("Unit tests failed")
                     }
                 }
             }
