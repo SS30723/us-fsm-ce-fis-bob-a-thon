@@ -38,7 +38,6 @@ public class OrderService {
             order.setStatus("PENDING");
         }
         logger.info("Creating order for customer: {}", order.getCustomerName());
-        System.out.println("Creating order for: " + order.getCustomerName());
         return orderRepository.save(order);
     }
 
