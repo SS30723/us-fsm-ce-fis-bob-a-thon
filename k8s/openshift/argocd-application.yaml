@@ -7,7 +7,7 @@ spec:
   project: default
   source:
     # Update this to your repo URL
-    repoURL: https://github.ibm.com/ibm-us-fsm-ce/sre-deploy-lab
+    repoURL: https://github.ibm.com/Andy-Madden/sre-project
     targetRevision: main
     path: k8s
   destination:

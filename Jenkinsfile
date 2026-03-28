@@ -1,3 +1,11 @@
+// ═══════════════════════════════════════════════════════════════════
+// SRE Pipeline — Baseline (no Bob integration)
+//
+// Runs lint, PCI compliance, tests, security scanning, an approval
+// gate, ArgoCD deployment, and smoke tests. No Bob AI calls.
+// See labs/Jenkinsfile.solution for the completed version with Bob.
+// ═══════════════════════════════════════════════════════════════════
+
 pipeline {
     agent {
         kubernetes {
@@ -39,9 +47,7 @@ spec:
 
     stages {
 
-        // ══════════════════════════════════════════════════════════════════
-        // STEP 1: Application Development team creates Pull Request
-        // ══════════════════════════════════════════════════════════════════
+        // ── STEP 1: Checkout ────────────────────────────────────────────
         stage('Checkout') {
             steps {
                 echo "══════════════════════════════════════════"
@@ -60,74 +66,24 @@ spec:
             }
         }
 
-        // ══════════════════════════════════════════════════════════════════
-        // STEP 2: Bob Analyzes the PR
-        // ══════════════════════════════════════════════════════════════════
-        stage('Bob PR Analysis') {
-            steps {
-                echo "══════════════════════════════════════════"
-                echo "  STEP 2: Bob Analyzes the PR"
-                echo "══════════════════════════════════════════"
-                script {
-                    def diffStat = sh(
-                        script: 'git diff --stat origin/main...HEAD 2>/dev/null || echo "No diff"',
-                        returnStdout: true
-                    ).trim()
-
-                    env.BOB_PR_ANALYSIS = askBob("""A pull request has been submitted for review.
-
-Branch: ${params.BRANCH}
-Changed files:
-${env.CHANGED_FILES}
-
-Diff summary:
-${diffStat}
-
-Analyze this PR:
-1. What is this change doing?
-2. What are the potential risks?
-3. What should reviewers focus on?
-
-Be concise.""")
-
-                    echo "Bob's PR Analysis:\n${env.BOB_PR_ANALYSIS}"
-                }
-            }
-        }
-
-        // ══════════════════════════════════════════════════════════════════
-        // STEP 3: Jenkins Linter validates the PR
-        // ══════════════════════════════════════════════════════════════════
+        // ── STEP 2: Standard Linting ────────────────────────────────────
         stage('Lint') {
             steps {
                 echo "══════════════════════════════════════════"
-                echo "  STEP 3: Standard Linting"
+                echo "  STEP 2: Standard Linting"
                 echo "══════════════════════════════════════════"
-                script {
-                    dir('order-service') {
-                        def result = sh(
-                            script: 'mvn checkstyle:check -q 2>&1 | tee ${WORKSPACE}/lint-output.txt',
-                            returnStatus: true
-                        )
-                        if (result != 0) {
-                            def output = sh(script: 'cat ${WORKSPACE}/lint-output.txt | tail -20', returnStdout: true).trim()
-                            def analysis = askBob("Checkstyle linting failed. Explain what's wrong and how to fix it:\n\n${output}")
-                            echo "Bob's Lint Analysis:\n${analysis}"
-                        } else {
-                            echo "Checkstyle passed."
-                        }
-                    }
+                dir('order-service') {
+                    sh 'mvn checkstyle:check -q'
                 }
+                echo "Checkstyle passed."
             }
         }
 
-        // ══════════════════════════════════════════════════════════════════
-        // STEP 4: PCI Environment Linter with Custom Checks
-        // ══════════════════════════════════════════════════════════════════
+        // ── STEP 3: PCI Compliance ──────────────────────────────────────
         stage('PCI Compliance Check') {
             steps {
                 echo "══════════════════════════════════════════"
-                echo "  STEP 4: PCI Compliance Checks"
+                echo "  STEP 3: PCI Compliance Checks"
                 echo "══════════════════════════════════════════"
                 script {
                     dir('order-service') {
@@ -138,21 +94,12 @@ Be concise.""")
                         if (result != 0) {
                             def output = sh(script: 'cat ${WORKSPACE}/pci-output.txt | tail -30', returnStdout: true).trim()
                             env.PCI_FAILED = 'true'
-                            env.BOB_PCI_ANALYSIS = askBob("""PCI compliance check failed in a regulated financial environment.
 
-These are PCI DSS compliance violations that must be fixed before deployment.
+                            // ╔════════════════════════════════════════════════════╗
+                            // ║  LAB 2, EXERCISE 2: Add Bob PCI analysis here     ║
+                            // ╚════════════════════════════════════════════════════╝
 
-Violations:
-${output}
-
-For each violation:
-1. Explain why this is a PCI compliance issue
-2. What the specific risk is (data exposure, audit failure, etc.)
-3. How to fix it
-
-Be specific and reference PCI DSS requirements where applicable.""")
-
-                            echo "Bob's PCI Analysis:\n${env.BOB_PCI_ANALYSIS}"
+                            echo "PCI compliance FAILED. Violations:\n${output}"
                         } else {
                             env.PCI_FAILED = 'false'
                             echo "PCI compliance check passed."
@@ -162,13 +109,11 @@ Be specific and reference PCI DSS requirements where applicable.""")
             }
         }
 
-        // ══════════════════════════════════════════════════════════════════
-        // Unit Tests
-        // ══════════════════════════════════════════════════════════════════
+        // ── STEP 4: Unit Tests ──────────────────────────────────────────
         stage('Test') {
             steps {
                 echo "══════════════════════════════════════════"
-                echo "  Running Unit Tests"
+                echo "  STEP 4: Running Unit Tests"
                 echo "══════════════════════════════════════════"
                 script {
                     dir('order-service') {
@@ -184,19 +129,12 @@ Be specific and reference PCI DSS requirements where applicable.""")
                         if (result != 0) {
                             def testOutput = sh(script: 'tail -50 ${WORKSPACE}/test-output.txt', returnStdout: true).trim()
                             env.TEST_FAILED = 'true'
-                            env.BOB_TEST_ANALYSIS = askBob("""Unit tests failed. Analyze the failure and identify the root cause.
 
-Test output:
-${testOutput}
+                            // ╔════════════════════════════════════════════════════╗
+                            // ║  LAB 2, EXERCISE 3: Add Bob test analysis here    ║
+                            // ╚════════════════════════════════════════════════════╝
 
-Provide:
-1. Which test(s) failed and why
-2. The root cause in the application code
-3. Suggested fix
-
-Be specific — reference exact class names and line numbers.""")
-
-                            echo "Bob's Test Analysis:\n${env.BOB_TEST_ANALYSIS}"
+                            echo "Tests FAILED:\n${testOutput}"
                         } else {
                             env.TEST_FAILED = 'false'
                         }
@@ -205,13 +143,11 @@ Be specific — reference exact class names and line numbers.""")
             }
         }
 
-        // ══════════════════════════════════════════════════════════════════
-        // Security Scan
-        // ══════════════════════════════════════════════════════════════════
+        // ── STEP 5: Security Scan ───────────────────────────────────────
         stage('Security Scan') {
             steps {
                 echo "══════════════════════════════════════════"
-                echo "  Security Vulnerability Scan"
+                echo "  STEP 5: Security Vulnerability Scan"
                 echo "══════════════════════════════════════════"
                 script {
                     def scanResult = sh(
@@ -221,19 +157,7 @@ Be specific — reference exact class names and line numbers.""")
 
                     if (scanResult.contains('CRITICAL') || scanResult.contains('HIGH')) {
                         env.SECURITY_RISK = 'HIGH'
-                        env.BOB_SECURITY_ANALYSIS = askBob("""Security scan found vulnerabilities in a PCI-regulated environment.
-
-Scan results:
-${scanResult}
-
-For each vulnerability:
-1. Is it exploitable in this context?
-2. What's the PCI compliance impact?
-3. Recommended remediation
-
-Prioritize by severity.""")
-
-                        echo "Bob's Security Analysis:\n${env.BOB_SECURITY_ANALYSIS}"
+                        echo "Security scan found HIGH/CRITICAL vulnerabilities:\n${scanResult}"
                     } else {
                         env.SECURITY_RISK = 'LOW'
                         echo "No critical or high vulnerabilities found."
@@ -242,93 +166,44 @@ Prioritize by severity.""")
             }
         }
 
-        // ══════════════════════════════════════════════════════════════════
-        // STEP 5: Create the Change Management (DCR) JIRA Ticket
-        // ══════════════════════════════════════════════════════════════════
-        stage('Create Change Request') {
+        // ── STEP 6: Approval Gate ───────────────────────────────────────
+        stage('Approval') {
             steps {
                 echo "══════════════════════════════════════════"
-                echo "  STEP 5: Create Deployment Change Request"
+                echo "  STEP 6: Awaiting Approval"
                 echo "══════════════════════════════════════════"
                 script {
-                    def pciStatus = env.PCI_FAILED == 'true' ? 'FAILED — see PCI analysis below' : 'PASSED'
-                    def testStatus = env.TEST_FAILED == 'true' ? 'FAILED — see test analysis below' : 'PASSED'
-                    def canDeploy = (env.PCI_FAILED != 'true' && env.TEST_FAILED != 'true')
+                    def pciStatus = env.PCI_FAILED == 'true' ? 'FAILED' : 'PASSED'
+                    def testStatus = env.TEST_FAILED == 'true' ? 'FAILED' : 'PASSED'
 
-                    env.DCR_SUMMARY = askBob("""Create a formal Deployment Change Request (DCR) for a PCI-regulated UK financial services environment.
+                    // ╔════════════════════════════════════════════════════════╗
+                    // ║  LAB 2, EXERCISE 4: Replace this manual summary with  ║
+                    // ║  a Bob-generated Deployment Change Request (DCR)      ║
+                    // ╚════════════════════════════════════════════════════════╝
 
-CHANGE DETAILS:
-- Branch: ${params.BRANCH}
-- Changed files: ${env.CHANGED_FILES}
-- PR Analysis: ${env.BOB_PR_ANALYSIS}
-
-VALIDATION RESULTS:
-- Standard lint: PASSED
-- PCI compliance: ${pciStatus}
-- Unit tests: ${testStatus} (${env.TEST_SUMMARY})
-- Security scan: ${env.SECURITY_RISK} risk
-${env.PCI_FAILED == 'true' ? '- PCI Issues: ' + env.BOB_PCI_ANALYSIS : ''}
-${env.TEST_FAILED == 'true' ? '- Test Failures: ' + env.BOB_TEST_ANALYSIS : ''}
-${env.SECURITY_RISK == 'HIGH' ? '- Security Issues: ' + env.BOB_SECURITY_ANALYSIS : ''}
-
-Create a DCR with:
-1. CHANGE DESCRIPTION — What is changing and why
-2. RISK ASSESSMENT — Low/Medium/High/Critical with justification
-3. AFFECTED SERVICES — What services and environments are impacted
-4. VALIDATION EVIDENCE — Summary of all check results
-5. ROLLBACK PLAN — How to revert if deployment fails
-6. RECOMMENDATION — APPROVE / REJECT / NEEDS FURTHER REVIEW
-
-${canDeploy ? 'All checks passed.' : 'IMPORTANT: Some checks FAILED. Reflect this in the risk assessment and recommendation.'}
-
-Be formal and concise. This will be reviewed by team management.""")
-
-                    echo ""
-                    echo "╔══════════════════════════════════════════════════════════╗"
-                    echo "║          DEPLOYMENT CHANGE REQUEST (DCR)                ║"
-                    echo "╠══════════════════════════════════════════════════════════╣"
-                    echo "${env.DCR_SUMMARY}"
-                    echo "╚══════════════════════════════════════════════════════════╝"
-                    echo ""
-                }
-            }
-        }
-
-        // ══════════════════════════════════════════════════════════════════
-        // STEP 6: Management Approval
-        // ══════════════════════════════════════════════════════════════════
-        stage('Management Approval') {
-            steps {
-                echo "══════════════════════════════════════════"
-                echo "  STEP 6: Awaiting Management Approval"
-                echo "══════════════════════════════════════════"
-                script {
                     try {
                         input message: """
-═══════════════════════════════════════
-DEPLOYMENT CHANGE REQUEST — Review Required
-═══════════════════════════════════════
+Deployment Review
+═════════════════
+Branch:         ${params.BRANCH}
+PCI Compliance: ${pciStatus}
+Unit Tests:     ${testStatus} (${env.TEST_SUMMARY})
+Security Risk:  ${env.SECURITY_RISK}
 
-${env.DCR_SUMMARY}
-
-═══════════════════════════════════════
 Do you approve this deployment?
 """,
                             ok: 'Approve Deployment',
-                            submitter: '' // anyone can approve for demo
+                            submitter: ''
                     } catch (e) {
-                        env.DCR_REJECTED = 'true'
-                        echo "Deployment REJECTED by management."
-                        error("DCR rejected — deployment aborted")
+                        echo "Deployment REJECTED."
+                        error("Deployment rejected — aborted")
                     }
-                    echo "Deployment APPROVED by management."
+                    echo "Deployment APPROVED."
                 }
             }
         }
 
-        // ══════════════════════════════════════════════════════════════════
-        // STEPS 7-8: Deploy via ArgoCD
-        // ══════════════════════════════════════════════════════════════════
+        // ── STEP 7: Build Image ────────────────────────────────────────
         stage('Build Image') {
             steps {
                 echo "══════════════════════════════════════════"
@@ -351,13 +226,13 @@ Do you approve this deployment?
             }
         }
 
+        // ── STEP 8: Deploy via ArgoCD ─────────────────────────────────
         stage('Deploy via ArgoCD') {
             steps {
                 echo "══════════════════════════════════════════"
                 echo "  STEP 8: ArgoCD Sync"
                 echo "══════════════════════════════════════════"
                 script {
-                    // Trigger ArgoCD sync
                     echo "Triggering ArgoCD sync for order-service..."
                     sh """
                     oc patch application order-service -n openshift-gitops \
@@ -365,7 +240,6 @@ Do you approve this deployment?
                         2>/dev/null || echo "ArgoCD sync triggered"
                     """
 
-                    // Wait for sync to complete
                     echo "Waiting for ArgoCD sync..."
                     sh """
                     for i in \$(seq 1 30); do
@@ -379,94 +253,33 @@ Do you approve this deployment?
                     done
                     """
 
-                    // Wait for the rollout itself
                     sh "oc rollout status deployment/order-service --timeout=120s"
                     echo "Deployment complete."
                 }
             }
         }
 
-        // ══════════════════════════════════════════════════════════════════
-        // STEP 9: Smoke Tests
-        // ══════════════════════════════════════════════════════════════════
+        // ── STEP 8: Smoke Tests ─────────────────────────────────────────
         stage('Smoke Tests') {
             steps {
                 echo "══════════════════════════════════════════"
-                echo "  STEP 9: Post-Deployment Smoke Tests"
+                echo "  STEP 8: Post-Deployment Smoke Tests"
                 echo "══════════════════════════════════════════"
                 script {
-                    // Give the service a moment to stabilize
                     sleep 10
 
-                    def smokeOutput = sh(
-                        script: 'bash pipeline/smoke-test.sh 2>&1',
-                        returnStdout: true
-                    ).trim()
-
                     def smokeResult = sh(
-                        script: 'bash pipeline/smoke-test.sh > /dev/null 2>&1; echo $?',
-                        returnStdout: true
-                    ).trim()
+                        script: 'bash pipeline/smoke-test.sh 2>&1',
+                        returnStatus: true
+                    )
 
-                    echo "Smoke Test Results:\n${smokeOutput}"
-
-                    if (smokeResult != '0') {
+                    if (smokeResult != 0) {
                         env.DEPLOY_STATUS = 'DEGRADED'
-                        def analysis = askBob("""Post-deployment smoke tests detected issues.
-
-Smoke test output:
-${smokeOutput}
-
-Analyze:
-1. Which services are unhealthy and why
-2. Is this a deployment issue or a pre-existing problem?
-3. Should we rollback?
-
-Be concise.""")
-                        echo "Bob's Smoke Test Analysis:\n${analysis}"
-                        env.BOB_SMOKE_ANALYSIS = analysis
+                        echo "Smoke tests detected issues."
                     } else {
                         env.DEPLOY_STATUS = 'HEALTHY'
                         echo "All smoke tests passed."
                     }
-                }
-            }
-        }
-
-        // ══════════════════════════════════════════════════════════════════
-        // STEP 10: Update Change Control
-        // ══════════════════════════════════════════════════════════════════
-        stage('Update Change Control') {
-            steps {
-                echo "══════════════════════════════════════════"
-                echo "  STEP 10: Update Change Control Record"
-                echo "══════════════════════════════════════════"
-                script {
-                    def update = askBob("""Update the Deployment Change Request with final deployment results.
-
-DEPLOYMENT RESULTS:
-- Status: ${env.DEPLOY_STATUS}
-- Branch deployed: ${params.BRANCH}
-- Build number: ${env.BUILD_NUMBER}
-- Smoke tests: ${env.DEPLOY_STATUS == 'HEALTHY' ? 'All services healthy' : 'Issues detected'}
-${env.DEPLOY_STATUS != 'HEALTHY' ? '- Issues: ' + (env.BOB_SMOKE_ANALYSIS ?: 'See smoke test output') : ''}
-
-Write a formal status update for the DCR JIRA ticket.
-Include:
-1. Deployment timestamp and status
-2. Verification results
-3. Next steps (if any issues found)
-4. Whether the change control record can be closed
-
-Be formal and concise.""")
-
-                    echo ""
-                    echo "╔══════════════════════════════════════════════════════════╗"
-                    echo "║          CHANGE CONTROL UPDATE                          ║"
-                    echo "╠══════════════════════════════════════════════════════════╣"
-                    echo "${update}"
-                    echo "╚══════════════════════════════════════════════════════════╝"
-                    echo ""
                 }
             }
         }
@@ -479,29 +292,4 @@ Be formal and concise.""")
             echo "══════════════════════════════════════════"
         }
     }
-}
-
-// ── Helper: ask Bob CLI a question ──────────────────────────────────────
-def askBob(prompt) {
-    def bobPod = sh(
-        script: "oc get pods -l component=bob-cli -o jsonpath='{.items[0].metadata.name}' 2>/dev/null",
-        returnStdout: true
-    ).trim()
-
-    if (!bobPod) {
-        echo "Warning: bob-cli pod not found"
-        return "Bob CLI not available"
-    }
-
-    def promptFile = ".bob-prompt-${System.currentTimeMillis()}.txt"
-    writeFile(file: promptFile, text: prompt)
-    sh "oc cp ${promptFile} ${bobPod}:/tmp/bob-prompt.txt 2>/dev/null"
-    sh "rm -f ${promptFile}"
-
-    def result = sh(
-        script: """oc exec ${bobPod} -- bash -c 'bob -p "\$(cat /tmp/bob-prompt.txt)" --hide-intermediary-output' 2>/dev/null || echo "Bob analysis unavailable" """,
-        returnStdout: true
-    ).trim()
-
-    return result
 }

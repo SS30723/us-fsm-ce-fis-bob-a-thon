@@ -754,7 +754,7 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 ## Notes for Implementation
 
 - The application has **9 unit tests** across 2 test files — enough to demonstrate test passes and failures
-- Status transitions (PENDING → CONFIRMED → SHIPPED → DELIVERED) provide a natural place to introduce bugs for the `demo/test-failure` branch
+- Status transitions (PENDING → CONFIRMED → SHIPPED → DELIVERED) provide a natural place to introduce bugs for the `lab/test-failure` branch
 - The `OrderService.validateStatusTransition()` method is the primary target for demo breakage — removing the validation or altering it creates realistic test failures
 - `application-test.properties` uses H2 in PostgreSQL compatibility mode, same pattern as the existing dental claims project
 - The `/api/orders/health` endpoint is used by the smoke test script, separate from the Actuator endpoints which are used by Kubernetes probes

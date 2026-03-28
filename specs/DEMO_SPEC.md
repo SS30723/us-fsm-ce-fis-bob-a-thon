@@ -6,7 +6,7 @@
 
 Three branches, each designed to trigger a different pipeline outcome. Created from `main` with one targeted change each.
 
-### `demo/happy-path`
+### `lab/happy-path`
 
 All checks pass. Bob recommends approval. Shows the full 10-step flow end-to-end.
 
@@ -14,7 +14,7 @@ All checks pass. Bob recommends approval. Shows the full 10-step flow end-to-end
 
 ```bash
 git checkout main && git pull
-git checkout -b demo/happy-path
+git checkout -b lab/happy-path
 
 # Add a harmless comment to OrderService.java
 # In order-service/src/main/java/com/example/orders/service/OrderService.java
@@ -22,7 +22,7 @@ git checkout -b demo/happy-path
 #   // Version 1.0.1 — improved logging for audit compliance
 
 git commit -am "chore: improve logging comments for audit compliance"
-git push origin demo/happy-path
+git push origin lab/happy-path
 ```
 
 **Expected pipeline result:**
@@ -34,7 +34,7 @@ git push origin demo/happy-path
 - Deployment: SUCCESS
 - Smoke tests: ALL PASS
 
-### `demo/test-failure`
+### `lab/test-failure`
 
 Unit tests fail. Bob analyzes the failure and explains the root cause.
 
@@ -42,7 +42,7 @@ Unit tests fail. Bob analyzes the failure and explains the root cause.
 
 ```bash
 git checkout main && git pull
-git checkout -b demo/test-failure
+git checkout -b lab/test-failure
 
 # In order-service/src/main/java/com/example/orders/service/OrderService.java
 # Replace the validateStatusTransition method with this broken version:
@@ -61,7 +61,7 @@ git checkout -b demo/test-failure
 #   but it's been removed
 
 git commit -am "refactor: simplify status validation logic"
-git push origin demo/test-failure
+git push origin lab/test-failure
 ```
 
 **Expected pipeline result:**
@@ -71,7 +71,7 @@ git push origin demo/test-failure
 - Bob DCR: "HIGH risk — test failures detected, do not deploy"
 - Pipeline stops at approval gate (or reviewer rejects)
 
-### `demo/security-vuln`
+### `lab/security-vuln`
 
 Security scan finds vulnerabilities. PCI compliance check also fails.
 
@@ -79,7 +79,7 @@ Security scan finds vulnerabilities. PCI compliance check also fails.
 
 ```bash
 git checkout main && git pull
-git checkout -b demo/security-vuln
+git checkout -b lab/security-vuln
 
 # 1. In order-service/src/main/java/com/example/orders/service/OrderService.java
 #    Add this line inside the createOrder method, before the return:
@@ -92,7 +92,7 @@ git checkout -b demo/security-vuln
 #       FROM eclipse-temurin:17.0.1-jre-alpine
 
 git commit -am "chore: add debug logging and pin base image version"
-git push origin demo/security-vuln
+git push origin lab/security-vuln
 ```
 
 **Expected pipeline result:**
@@ -103,13 +103,13 @@ git push origin demo/security-vuln
 - Bob DCR: "CRITICAL risk — PCI compliance violation and security vulnerabilities"
 - Reviewer sees detailed risk assessment and rejects
 
-### `demo/pci-violation` (optional fourth branch)
+### `lab/pci-violation` (optional fourth branch)
 
 Shows only PCI violations without security scan issues. Good for focusing the demo on compliance.
 
 ```bash
 git checkout main && git pull
-git checkout -b demo/pci-violation
+git checkout -b lab/pci-violation
 
 # In order-service/src/main/java/com/example/orders/service/OrderService.java
 # Add multiple PCI violations:
@@ -118,7 +118,7 @@ git checkout -b demo/pci-violation
 #   3. Add a TODO comment: // TODO: add encryption for PII fields    // PCI-06
 
 git commit -am "feat: add order processing debug output"
-git push origin demo/pci-violation
+git push origin lab/pci-violation
 ```
 
 ---
@@ -166,16 +166,16 @@ make setup
 make oc-deploy-argocd
 
 # 5. Open Jenkins UI (URL printed by setup)
-# 6. Click "Build with Parameters" → set BRANCH to demo/happy-path → Build
+# 6. Click "Build with Parameters" → set BRANCH to lab/happy-path → Build
 ```
 
 ## Demo Scenarios
 
 | Branch | What happens | Bob's role |
 |--------|-------------|------------|
-| `demo/happy-path` | All checks pass, deployment succeeds | Creates DCR: "Low risk, approve" |
-| `demo/test-failure` | Tests fail, pipeline blocks | Analyzes root cause, creates DCR: "Do not deploy" |
-| `demo/security-vuln` | PCI + security failures | Explains PCI violations and CVE remediation |
+| `lab/happy-path` | All checks pass, deployment succeeds | Creates DCR: "Low risk, approve" |
+| `lab/test-failure` | Tests fail, pipeline blocks | Analyzes root cause, creates DCR: "Do not deploy" |
+| `lab/security-vuln` | PCI + security failures | Explains PCI violations and CVE remediation |
 
 ## Make Targets
 
@@ -233,7 +233,7 @@ curl http://$(oc get route order-service -o jsonpath='{.spec.host}')/api/orders/
 
 1. Open Jenkins UI in browser
 2. Click **sre-pipeline** → **Build with Parameters**
-3. Set BRANCH to `demo/happy-path`
+3. Set BRANCH to `lab/happy-path`
 4. Click **Build**
 
 **What to point out as it runs:**
@@ -259,7 +259,7 @@ curl http://$(oc get route order-service -o jsonpath='{.spec.host}')/api/orders/
 **Story:** "Another developer made a change that looks fine but broke the status validation logic."
 
 1. In Jenkins, click **Build with Parameters**
-2. Set BRANCH to `demo/test-failure`
+2. Set BRANCH to `lab/test-failure`
 3. Click **Build**
 
 **What to point out:**
@@ -279,7 +279,7 @@ curl http://$(oc get route order-service -o jsonpath='{.spec.host}')/api/orders/
 **Story:** "A developer added some debug logging and pinned a base image version. Seems harmless, but..."
 
 1. In Jenkins, click **Build with Parameters**
-2. Set BRANCH to `demo/security-vuln`
+2. Set BRANCH to `lab/security-vuln`
 3. Click **Build**
 
 **What to point out:**

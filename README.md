@@ -68,8 +68,8 @@ make pci-check            # Run PCI compliance check
 ## Demo Scenarios
 
 The complete Jenkinsfile includes three demo branches:
-- `demo/happy-path` — Clean deployment, all checks pass
-- `demo/test-failure` — Unit tests fail, Bob diagnoses root cause
-- `demo/security-vuln` — PCI violations + CVEs, Bob explains compliance impact
+- `lab/happy-path` — Clean deployment, all checks pass
+- `lab/test-failure` — Unit tests fail, Bob diagnoses root cause
+- `lab/security-vuln` — PCI violations + CVEs, Bob explains compliance impact
 
 See `DEMO.md` for presenter notes.

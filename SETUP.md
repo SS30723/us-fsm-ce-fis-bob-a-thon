@@ -199,7 +199,7 @@ make oc-deploy-argocd
 
 This installs the OpenShift GitOps operator, grants it access to your namespace, and creates an Application CR pointing at the `k8s/` directory in this repo.
 
-When it finishes, it prints the ArgoCD UI URL. Get the admin password with:
+When it finishes, it prints the ArgoCD UI URL. Log in with username `admin` and the password from:
 
 ```bash
 oc extract secret/openshift-gitops-cluster -n openshift-gitops --to=-
@@ -239,7 +239,7 @@ GITHUB_PAT=ghp_xxx make oc-deploy-jenkins
 4. Creates the `github-pat` credential in Jenkins
 5. Creates the `sre-pipeline` job pointing to the `Jenkinsfile` in this repo
 
-**First time opening Jenkins UI:** When you visit the Jenkins URL, OpenShift will show a permissions consent screen asking Jenkins to access `user:info` and `user:check-access`. Click **"Allow selected permissions"** — this is standard OpenShift OAuth and lets Jenkins authenticate you as your cluster user. It's a one-time prompt per user.
+**First time opening Jenkins UI:** Log in with your TechZone cluster credentials (the same username and password you used for `oc login`). OpenShift will then show a permissions consent screen asking Jenkins to access `user:info` and `user:check-access`. Click **"Allow selected permissions"** — this is a one-time prompt per user.
 
 When the setup script finishes, it prints the Jenkins URL:
 
@@ -357,7 +357,7 @@ oc set env dc/jenkins GIT_SSL_NO_VERIFY=true
 ## Day-to-Day Commands
 
 ```bash
-# Deploy everything (app + ArgoCD + Jenkins + Bob CLI)
+# Deploy everything (app + ArgoCD + Jenkins)
 make setup
 
 # Remove everything from the cluster

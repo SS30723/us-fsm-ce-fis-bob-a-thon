@@ -306,7 +306,7 @@ Identical in structure to the existing dental claims `jenkins-setup.sh`, but cre
 1. Change `GITHUB_REPO_URL` default to point to the new repo
 2. Change the job name from `dental-pipeline` to `sre-pipeline`
 3. Change the `scriptPath` in the job XML from `Jenkinsfile` to `Jenkinsfile`  (same, just confirming)
-4. Change the default branch from `demo/happy-path` to `demo/happy-path`  (same)
+4. Change the default branch from `lab/happy-path` to `lab/happy-path`  (same)
 5. Remove the frontend service account patching (Step 5) — there is no frontend in this project
 6. Keep everything else (plugin installation, credential creation, auth detection, crumb handling)
 
@@ -314,7 +314,7 @@ The modified sections:
 
 ```bash
 # Line ~89: Change repo URL
-GITHUB_REPO_URL="${GITHUB_REPO_URL:-https://github.ibm.com/ibm-us-fsm-ce/sre-deploy-lab}"
+GITHUB_REPO_URL="${GITHUB_REPO_URL:-https://github.ibm.com/Andy-Madden/sre-project}"
 
 # Line ~282: Change job name
 echo "=== Step 4: Creating sre-pipeline job ==="
@@ -463,7 +463,7 @@ spec:
   project: default
   source:
     # Update this to your repo URL
-    repoURL: https://github.ibm.com/ibm-us-fsm-ce/sre-deploy-lab
+    repoURL: https://github.ibm.com/Andy-Madden/sre-project
     targetRevision: main
     path: k8s
   destination:

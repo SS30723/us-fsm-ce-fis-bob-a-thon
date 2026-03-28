@@ -10,7 +10,7 @@ In this lab you will add Bob AI to a working Jenkins pipeline, one integration p
 Each exercise builds on the previous one. After each exercise you will commit, push, and run the pipeline to see the result.
 
 **Time:** ~45 minutes
-**Prerequisites:** Lab 1 complete (app, Bob CLI, Jenkins all running). You should be on the `lab/my-pipeline` branch with the starter Jenkinsfile.
+**Prerequisites:** Lab 1 complete (app, Bob CLI, Jenkins all running). The default `Jenkinsfile` in the repo is the baseline pipeline with no Bob integration. The completed reference implementation is at `labs/Jenkinsfile.solution`.
 
 ---
 

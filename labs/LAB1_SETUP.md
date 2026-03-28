@@ -1,6 +1,6 @@
 # Lab 1: Verify Your Environment
 
-**Prerequisite:** Complete [SETUP.md](../SETUP.md) first — you should have the app, Bob CLI, and Jenkins deployed before starting this lab.
+**Prerequisite:** Complete [SETUP.md](../SETUP.md) first — you should have the app, ArgoCD, and Jenkins deployed before starting this lab.
 
 **Time:** ~10 minutes
 
@@ -28,23 +28,7 @@ curl -X POST http://$(oc get route order-service -o jsonpath='{.spec.host}')/api
 
 ---
 
-## 1.2 — Verify Bob CLI
-
-```bash
-# Pod is running
-oc get pods -l component=bob-cli
-# Expected: bob-cli pod in Running state
-
-# Bob can respond
-make oc-bob PROMPT="Say hello in one sentence"
-# Expected: Bob responds with a greeting
-```
-
-> **Checkpoint:** Bob responds to prompts before continuing.
-
----
-
-## 1.3 — Verify Jenkins
+## 1.2 — Verify Jenkins
 
 ```bash
 # Jenkins pod is running
@@ -58,32 +42,33 @@ echo "Open in browser: https://$JENKINS_URL"
 
 Open the Jenkins URL in your browser. OpenShift will show a permissions consent screen — click **"Allow selected permissions"**.
 
-Navigate to **sre-pipeline** and click **Build with Parameters**. Set BRANCH to `main` and click **Build**. The build will run but some stages may fail (no lab branches yet) — that's OK. The point is to verify Jenkins can start a build.
+Navigate to **sre-pipeline** and click **Build with Parameters**. Leave BRANCH as `main` and click **Build**. The pipeline should run all stages — Checkout, Lint, PCI Compliance, Test, Security Scan, Approval, Build Image, Deploy via ArgoCD, Smoke Tests. No Bob calls yet.
 
-> **Checkpoint:** Jenkins UI is accessible and a build starts.
+> **Checkpoint:** Jenkins UI is accessible and the pipeline runs end-to-end.
 
 ---
 
-## 1.4 — Install the starter pipeline
+## 1.3 — Deploy Bob CLI
 
-For Lab 2 you will start from a pipeline that has **no Bob integration**. Copy the starter Jenkinsfile into place:
-
-```bash
-cp labs/Jenkinsfile.starter Jenkinsfile
-```
-
-Commit and push this to a working branch:
+Bob CLI runs as a pod on the cluster. Deploy it now — you'll use it in Lab 2:
 
 ```bash
-git checkout -b lab/my-pipeline
-git add Jenkinsfile
-git commit -m "lab: start with baseline pipeline (no Bob)"
-git push origin lab/my-pipeline
+make oc-deploy-bob
 ```
 
-Run a build in Jenkins with `BRANCH=lab/my-pipeline` to confirm the baseline pipeline works end-to-end.
+Verify it's running:
 
-> **Checkpoint:** The starter pipeline runs all 8 stages — Checkout, Lint, PCI Compliance, Test, Security Scan, Approval, Deploy, Smoke Tests. No Bob calls yet.
+```bash
+# Pod is running
+oc get pods -l component=bob-cli
+# Expected: bob-cli pod in Running state
+
+# Bob can respond
+make oc-bob PROMPT="Say hello in one sentence"
+# Expected: Bob responds with a greeting
+```
+
+> **Checkpoint:** Bob responds to prompts.
 
 ---
 
@@ -92,8 +77,9 @@ Run a build in Jenkins with `BRANCH=lab/my-pipeline` to confirm the baseline pip
 | Component | Status |
 |-----------|--------|
 | order-service + PostgreSQL | Running on cluster |
+| ArgoCD | Watching k8s manifests |
+| Jenkins + sre-pipeline job | Running, pipeline passes |
 | Bob CLI pod | Running, responds to prompts |
-| Jenkins + sre-pipeline job | Running, builds trigger |
-| Starter Jenkinsfile | Committed to `lab/my-pipeline` |
+| Jenkinsfile | Baseline pipeline (no Bob) — see `labs/Jenkinsfile.solution` for the completed version |
 
 You're ready for **Lab 2: Integrating Bob into Your Pipeline**.

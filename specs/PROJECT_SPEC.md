@@ -300,14 +300,14 @@ curl -sk "https://$JENKINS_URL/job/sre-pipeline/api/json" | python3 -c "import s
 ```bash
 # Create happy-path branch
 git checkout main && git pull
-git checkout -b demo/happy-path
+git checkout -b lab/happy-path
 # Make the changes described in DEMO_SPEC.md
 git commit -am "chore: improve logging comments for audit compliance"
-git push origin demo/happy-path
+git push origin lab/happy-path
 ```
 
 **Checkpoint — run the happy path:**
-1. In Jenkins UI: Build with Parameters → BRANCH = `demo/happy-path` → Build
+1. In Jenkins UI: Build with Parameters → BRANCH = `lab/happy-path` → Build
 2. Watch the build progress
 
 **Verify each stage passes:**

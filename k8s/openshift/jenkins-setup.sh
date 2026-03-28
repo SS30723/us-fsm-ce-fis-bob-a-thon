@@ -75,7 +75,7 @@ else
     fi
 fi
 
-GITHUB_REPO_URL="${GITHUB_REPO_URL:-https://github.ibm.com/ibm-us-fsm-ce/sre-deploy-lab}"
+GITHUB_REPO_URL="${GITHUB_REPO_URL:-https://github.ibm.com/Andy-Madden/sre-project}"
 
 # ── Step 1: Deploy Jenkins ───────────────────────────────────────────────────
 
@@ -262,7 +262,7 @@ JOB_XML=$(cat <<'JOBEOF'
       <parameterDefinitions>
         <hudson.model.StringParameterDefinition>
           <name>BRANCH</name>
-          <defaultValue>demo/happy-path</defaultValue>
+          <defaultValue>main</defaultValue>
           <description>Branch to build</description>
           <trim>true</trim>
         </hudson.model.StringParameterDefinition>
@@ -325,7 +325,7 @@ echo ""
 echo "To test manually:"
 echo "  1. Open $JENKINS_URL/job/sre-pipeline/"
 echo "  2. Click 'Build with Parameters'"
-echo "  3. Set BRANCH to 'demo/happy-path' (or any demo branch)"
+echo "  3. Set BRANCH to 'main' (or any lab branch)"
 echo "  4. Click 'Build'"
 echo ""
 echo "If GitHub SSL fails: Jenkins → Manage Jenkins → Git → set http.sslVerify=false"

@@ -20,9 +20,9 @@ help: ## Show available targets
 
 # ── Full Setup / Teardown ────────────────────────────────
 
-setup: oc-deploy oc-deploy-argocd oc-deploy-jenkins oc-deploy-bob ## Deploy everything (app + ArgoCD + Jenkins + Bob)
+setup: oc-deploy oc-deploy-argocd oc-deploy-jenkins ## Deploy everything (app + ArgoCD + Jenkins)
 	@echo ""
-	@echo "Setup complete."
+	@echo "Setup complete. Run 'make oc-deploy-bob' to add Bob CLI (see Lab 1)."
 
 teardown: oc-teardown-argocd oc-teardown-bob oc-teardown-jenkins oc-teardown ## Remove everything
 

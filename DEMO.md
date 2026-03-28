@@ -24,7 +24,7 @@ curl http://$(oc get route order-service -o jsonpath='{.spec.host}')/api/orders/
 
 1. Open Jenkins UI in browser
 2. Click **sre-pipeline** → **Build with Parameters**
-3. Set BRANCH to `demo/happy-path`
+3. Set BRANCH to `lab/happy-path`
 4. Click **Build**
 
 **What to point out as it runs:**
@@ -50,7 +50,7 @@ curl http://$(oc get route order-service -o jsonpath='{.spec.host}')/api/orders/
 **Story:** "Another developer made a change that looks fine but broke the status validation logic."
 
 1. In Jenkins, click **Build with Parameters**
-2. Set BRANCH to `demo/test-failure`
+2. Set BRANCH to `lab/test-failure`
 3. Click **Build**
 
 **What to point out:**
@@ -70,7 +70,7 @@ curl http://$(oc get route order-service -o jsonpath='{.spec.host}')/api/orders/
 **Story:** "A developer added some debug logging and pinned a base image version. Seems harmless, but..."
 
 1. In Jenkins, click **Build with Parameters**
-2. Set BRANCH to `demo/security-vuln`
+2. Set BRANCH to `lab/security-vuln`
 3. Click **Build**
 
 **What to point out:**
