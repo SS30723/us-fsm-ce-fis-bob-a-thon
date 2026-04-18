@@ -22,11 +22,11 @@ This plan details how to implement a single Jenkins instance with Bob CLI as a s
 
 ## Workflow: Progressive Stages with Manual Commits
 
-This implementation runs in 11 stages on a dedicated branch (`multi_user_implementation`). Each stage is independently testable. The rules:
+This implementation runs in 12 stages on a dedicated branch (`multi_user_implementation`). Each stage is independently testable. The rules:
 
 1. **One stage at a time.** Complete the stage's work and run its test/validation step.
 2. **Commit manually.** After validation, review the diff and create the commit using the suggested message.
-3. **Wait for explicit confirmation.** Claude does not begin the next stage until you say "committed" (or equivalent). The "⏸ Stop" marker at the end of each stage is a hard stop.
+3. **Wait for explicit confirmation between stages.** The "⏸ Stop" marker at the end of each stage is a hard stop — verify the test passes and the commit is in before moving on.
 4. **If a stage fails its test**, fix it inside the same stage — do not advance and squash later.
 
 This gives clean, reviewable commits and lets you bail out at any stage without leaving half-finished work behind.
@@ -142,7 +142,110 @@ git status                  # should be clean before starting Stage 1
 
 ---
 
-### Stage 1 — Extract Jenkinsfile prompts to `pipeline/prompts/`
+### Stage 1 — Cluster prerequisites & user provisioning
+
+**Goal:** Bring a fresh TechZone OpenShift cluster up to a state where the rest of the plan can run. Provision OpenShift identities for `user1` … `user20` via htpasswd. Verify the Jenkins install path. Capture the GitHub PAT we'll need for Stage 9.
+
+**Steps:**
+
+1. **Log into the cluster as `kubeadmin`** and confirm the version:
+   ```bash
+   oc login --server=<api-url> -u kubeadmin -p <password>
+   oc version            # confirm OCP 4.x; capture the minor version
+   oc whoami             # should be kubeadmin (or system:admin)
+   ```
+
+2. **Confirm Jenkins install path.** TechZone clusters usually ship the legacy `jenkins-persistent` template; if not, we fall back to the Jenkins Operator in Stage 4.
+   ```bash
+   oc get template jenkins-persistent -n openshift
+   # If found: Stage 4 uses `oc new-app jenkins-persistent ...` (current text).
+   # If not:   Stage 4 installs the Jenkins Operator from OperatorHub instead.
+   ```
+   Note the result; we'll use it in Stage 4.
+
+3. **Create htpasswd identity provider with 20 lab users.** Save as `scripts/00-htpasswd-setup.sh`:
+   ```bash
+   #!/usr/bin/env bash
+   set -euo pipefail
+
+   # Generate htpasswd file with 20 lab users
+   HTPASSWD_FILE=$(mktemp)
+   trap "rm -f $HTPASSWD_FILE" EXIT
+
+   for i in {1..20}; do
+       # Default password is `user${i}-pw`. Override per-user before the event.
+       htpasswd -bB "$HTPASSWD_FILE" "user${i}" "user${i}-pw"
+   done
+
+   # Create / update the htpasswd Secret in openshift-config
+   oc -n openshift-config create secret generic htpass-lab \
+       --from-file=htpasswd="$HTPASSWD_FILE" \
+       --dry-run=client -o yaml | oc apply -f -
+
+   # Patch the cluster OAuth config to add the htpasswd IdP
+   # (idempotent — re-runs append/update the htpasswd entry)
+   oc patch oauth cluster --type=merge -p '{
+     "spec": {
+       "identityProviders": [{
+         "name": "lab-htpasswd",
+         "mappingMethod": "claim",
+         "type": "HTPasswd",
+         "htpasswd": { "fileData": { "name": "htpass-lab" } }
+       }]
+     }
+   }'
+
+   echo "htpasswd IdP applied. Wait ~1 minute for the OAuth pods to roll over."
+   ```
+
+4. **Trigger first-login for each user so the Identity object exists.** OpenShift creates `User` and `Identity` resources lazily on first login, but RBAC bindings can reference future users. Either:
+   - **Recommended for a lab**: pre-create them so RBAC works without waiting for first login:
+     ```bash
+     for i in {1..20}; do
+         oc create user "user${i}" || true
+         oc create identity "lab-htpasswd:user${i}" || true
+         oc create useridentitymapping "lab-htpasswd:user${i}" "user${i}" || true
+     done
+     ```
+   - Alternatively, instruct each participant to log in once at `https://<console-url>` with their `user${i}` / `user${i}-pw` credentials before the event starts.
+
+5. **Generate a GitHub Personal Access Token** with `repo` scope (read access to this repo). Store it in your password manager — Stage 9 will install it as a Jenkins credential named `github-pat`. Capture the token value into a local env var for the next stage's use:
+   ```bash
+   export GITHUB_PAT="<paste-token-here>"   # do not commit
+   ```
+
+6. **Confirm the `BOBSHELL_API_KEY`** (Bob CLI key) is available as an env var — Stage 5 (Bob Secret) needs it:
+   ```bash
+   echo "BOBSHELL_API_KEY length: ${#BOBSHELL_API_KEY}"   # non-zero = set
+   ```
+
+**Test:**
+- `oc get oauth cluster -o jsonpath='{.spec.identityProviders[?(@.name=="lab-htpasswd")].name}'` returns `lab-htpasswd`.
+- `oc get users` lists `user1` … `user20`.
+- `oc login -u user1 -p user1-pw` succeeds; `oc whoami` returns `user1`. Log back in as kubeadmin afterwards.
+- `oc get template jenkins-persistent -n openshift` either returns the template (use template path in Stage 4) or `NotFound` (use Operator path in Stage 4) — record which.
+- `${GITHUB_PAT}` and `${BOBSHELL_API_KEY}` are both set in your shell.
+
+**Commit message:**
+```
+Add cluster prerequisites: htpasswd IdP + 20 lab users
+
+scripts/00-htpasswd-setup.sh provisions an htpasswd identity provider
+with 20 pre-created users (user1 ... user20) so RBAC bindings in later
+stages can resolve immediately without waiting for first login. Default
+passwords (user{N}-pw) are placeholders — override per-user before the
+event.
+
+Records the Jenkins install path for Stage 4 (jenkins-persistent
+template if available, otherwise Jenkins Operator). Captures the
+GITHUB_PAT and BOBSHELL_API_KEY env vars that downstream stages need.
+```
+
+⏸ **Stop.** Confirm commit before moving on.
+
+---
+
+### Stage 2 — Extract Jenkinsfile prompts to `pipeline/prompts/`
 
 **Goal:** Lift every inline Bob prompt out of the Jenkinsfile into its own file under `pipeline/prompts/`. Use `${VAR}` placeholders for values supplied by the pipeline.
 
@@ -180,7 +283,7 @@ in this commit — askBob is still inline.
 
 ---
 
-### Stage 2 — Refactor `askBob` to read prompt files and accept a mode
+### Stage 3 — Refactor `askBob` to read prompt files and accept a mode
 
 **Goal:** Replace the inline-prompt `askBob(prompt)` with `askBob(promptName, vars = [:], mode = null)`. Update all callers. Still works against the existing per-user Bob pod (no infra changes yet) so the refactor is independently testable.
 
@@ -205,7 +308,7 @@ in this commit — askBob is still inline.
        def modeFlag = mode ? "--mode ${mode}" : ""
 
        // NOTE: this stage still uses the per-user Bob pod via oc exec.
-       // Stage 6 swaps this for the sidecar container('bob-cli') { ... } form.
+       // Stage 7 swaps this for the sidecar container('bob-cli') { ... } form.
        def bobPod = sh(
            script: "oc get pods -l component=bob-cli -o jsonpath='{.items[0].metadata.name}' 2>/dev/null",
            returnStdout: true
@@ -260,12 +363,16 @@ happens in a later stage so this refactor is independently testable.
 
 ---
 
-### Stage 3 — Stand up `jenkins-project` namespace + Jenkins controller
+### Stage 4 — Stand up `jenkins-project` namespace + Jenkins controller
 
 **Goal:** Shared Jenkins controller running in its own namespace, reachable via Route, OAuth login working.
 
-**Steps:**
+**Pick install path** based on what Stage 1 told you about `jenkins-persistent`.
+
+#### Path A — Legacy `jenkins-persistent` template (use if Stage 1 found it)
+
 ```bash
+# scripts/01-jenkins-project.sh
 oc new-project jenkins-project
 oc new-app jenkins-persistent \
     --param MEMORY_LIMIT=4Gi \
@@ -273,11 +380,69 @@ oc new-app jenkins-persistent \
     --param ENABLE_OAUTH=true
 oc rollout status dc/jenkins -n jenkins-project --timeout=300s
 ```
-Save the commands as `scripts/01-jenkins-project.sh`.
 
-**Test:**
-- `oc get route jenkins -n jenkins-project -o jsonpath='{.spec.host}'` returns a hostname.
-- Open the URL in a browser; "Log in with OpenShift" succeeds for cluster admin.
+#### Path B — Jenkins Operator from OperatorHub (use if `jenkins-persistent` is absent)
+
+```bash
+# scripts/01-jenkins-project.sh
+oc new-project jenkins-project
+
+# Subscribe to the Jenkins Operator (community edition)
+cat <<EOF | oc apply -f -
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: jenkins-og
+  namespace: jenkins-project
+spec:
+  targetNamespaces:
+    - jenkins-project
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: jenkins-operator
+  namespace: jenkins-project
+spec:
+  channel: alpha
+  name: jenkins-operator
+  source: community-operators
+  sourceNamespace: openshift-marketplace
+EOF
+
+# Wait for the Operator pod to come up
+oc -n jenkins-project wait --for=condition=Available \
+    deployment/jenkins-operator --timeout=300s
+
+# Create the Jenkins instance (operator handles PVC, Service, Route, ServiceAccount)
+cat <<EOF | oc apply -f -
+apiVersion: jenkins.io/v1alpha2
+kind: Jenkins
+metadata:
+  name: jenkins
+  namespace: jenkins-project
+spec:
+  master:
+    containers:
+      - name: jenkins-master
+        image: quay.io/jenkins-kubernetes-operator/jenkins:lts
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "4Gi"
+            cpu: "2"
+EOF
+
+# Wait for Jenkins to be ready
+oc -n jenkins-project wait --for=condition=Ready \
+    jenkins/jenkins --timeout=600s
+```
+
+**Test (both paths):**
+- `oc get route -n jenkins-project` returns a Jenkins Route hostname.
+- Open the URL in a browser; log in as `kubeadmin` via OpenShift OAuth.
 - Jenkins dashboard loads (empty).
 
 **Commit message:**
@@ -285,16 +450,17 @@ Save the commands as `scripts/01-jenkins-project.sh`.
 Add jenkins-project namespace + Jenkins controller setup script
 
 scripts/01-jenkins-project.sh provisions the shared jenkins-project
-namespace and deploys Jenkins via the jenkins-persistent template with
-OAuth enabled. Persistent volume and 4Gi memory limit chosen for the
-20-user lab capacity target.
+namespace and deploys Jenkins via either the jenkins-persistent template
+(if available on this cluster) or the Jenkins Operator from OperatorHub.
+Persistent volume and 4Gi memory limit chosen for the 20-user lab
+capacity target.
 ```
 
 ⏸ **Stop.** Confirm commit before moving on.
 
 ---
 
-### Stage 4 — Create Bob API key Secret
+### Stage 5 — Create Bob API key Secret
 
 **Goal:** API key stored in a rotatable Secret in `jenkins-project`. Key is supplied at run time via env var, never committed.
 
@@ -327,7 +493,7 @@ rotation runbook lives in the Security Considerations section of the plan.
 
 ---
 
-### Stage 5 — Build custom Jenkins agent + Bob CLI images in `jenkins-project`
+### Stage 6 — Build custom Jenkins agent + Bob CLI images in `jenkins-project`
 
 **Goal:** Both images live in the `jenkins-project` internal registry and are pullable by agent pods.
 
@@ -368,7 +534,7 @@ registry where the dynamic agent pod will pull them.
 
 ---
 
-### Stage 6 — Switch Jenkinsfile to a Kubernetes agent pod with Bob sidecar
+### Stage 7 — Switch Jenkinsfile to a Kubernetes agent pod with Bob sidecar
 
 **Goal:** Pipeline runs in a pod with `pipeline-agent` + `bob-cli` containers. `askBob` calls Bob via `container('bob-cli')` instead of `oc exec`.
 
@@ -480,7 +646,7 @@ validate the sidecar in isolation before any user projects exist.
 
 ---
 
-### Stage 7 — First user project (`user1-project`) + RBAC + app deployment
+### Stage 8 — First user project (`user1-project`) + RBAC + app deployment
 
 **Goal:** `user1-project` exists, has order-service + db running, Jenkins ServiceAccount can deploy to it, the OpenShift user `user1` has edit on `user1-project` only.
 
@@ -536,33 +702,74 @@ user1 has access to user1-project but is denied jenkins-project.
 
 ---
 
-### Stage 8 — First Jenkins folder + pipeline job for user1, with folder RBAC + OAuth
+### Stage 9 — First Jenkins folder + pipeline job for user1, with folder RBAC + OAuth
 
 **Goal:** user1 logs into Jenkins via OpenShift OAuth, sees ONLY the `user1` folder, runs `sre-pipeline` against `user1-project`, Bob calls succeed.
 
 **Steps:**
-1. In Jenkins (`jenkins-project`):
-   - Install / enable the **OpenShift Login** plugin.
-   - Set authorization strategy to **Role-Based Strategy**.
-2. Run a Groovy init script (or JCasC) that creates the `user1` folder and the parameterized `sre-pipeline` job inside, with `Item.Read/Build/Cancel` granted only to the Jenkins user `user1`. Save as `scripts/06-create-jenkins-folder.groovy` (parameterized by user).
-3. The pipeline job sets `USER_PROJECT` default to `user1-project` and uses `params.USER_PROJECT` in deploy stages.
+
+1. **Install + configure OpenShift OAuth in Jenkins.**
+   - Install the **OpenShift Login** plugin via Manage Jenkins → Plugins (or pre-install via JCasC).
+   - Manage Jenkins → Configure Global Security:
+     - Security Realm = **Login with OpenShift**
+     - Authorization = **Role-Based Strategy**
+   - Confirm the OAuth client is registered in OpenShift (the plugin auto-registers using the Jenkins SA token; verify with `oc get oauthclient | grep jenkins`).
+   - Verify by logging out and back in as `kubeadmin` via OAuth.
+
+2. **Verify the OAuth username mapping** before bulk-provisioning folders. The Jenkins username after OAuth login must literally match the OpenShift username (`user1`, `user2`, …). If the plugin records a different format (`user1@lab-htpasswd`, etc.), folder RBAC won't match.
+   ```
+   - Log in as user1 (password from Stage 1: user1-pw).
+   - In Jenkins, go to People — confirm the entry shows username `user1`.
+   - If it shows something else, fix the OpenShift Login plugin's "username mapping" before continuing.
+   ```
+
+3. **Create the `github-pat` Jenkins credential** so pipelines can clone this repo. Save as `scripts/06-create-github-credential.groovy`:
+   ```groovy
+   import com.cloudbees.plugins.credentials.*
+   import com.cloudbees.plugins.credentials.domains.*
+   import com.cloudbees.plugins.credentials.impl.*
+   import jenkins.model.Jenkins
+
+   def store = Jenkins.instance
+       .getExtensionList(SystemCredentialsProvider.class)[0]
+       .getStore()
+
+   def cred = new UsernamePasswordCredentialsImpl(
+       CredentialsScope.GLOBAL,
+       'github-pat',
+       'GitHub PAT for sre-project repo',
+       System.getenv('GITHUB_USER') ?: 'lab-bot',
+       System.getenv('GITHUB_PAT')
+   )
+   store.addCredentials(Domain.global(), cred)
+   ```
+   Run via `oc -n jenkins-project exec deployment/jenkins -- ...` or paste into Manage Jenkins → Script Console (env vars from Stage 1 must be exported in the Jenkins controller pod's shell).
+
+4. **Create the `user1` folder + `sre-pipeline` job.** Groovy init script (parameterized by user). Save as `scripts/07-create-jenkins-folder.groovy`:
+   - Folder: `user1`, with `Item.Read / Build / Cancel` granted to Jenkins user `user1` (from step 2).
+   - Inside: `pipelineJob('sre-pipeline')` with `USER_PROJECT` parameter defaulting to `user1-project`, SCM = git this repo, credential = `github-pat`, script path = `Jenkinsfile`.
 
 **Test:**
 - Log out of Jenkins admin. Log in via OAuth as `user1`.
 - Confirm user1 sees ONLY the `user1` folder — no other folders, no system jobs.
 - Trigger `sre-pipeline` from inside `user1`'s folder.
+- Pipeline checkout succeeds (proves `github-pat` credential works).
 - Pipeline pod comes up in `jenkins-project` with both containers; pipeline deploys to `user1-project`; all 8 Bob calls succeed.
 - `oc --as=user1 get pods -n jenkins-project` is still denied — confirming Jenkins UI access does not require any OpenShift role on `jenkins-project`.
 
 **Commit message:**
 ```
-Add Jenkins OAuth + folder RBAC + first user (user1) job
+Add Jenkins OAuth + GitHub credential + folder RBAC + first user (user1) job
 
 OpenShift Login plugin and Role-Based Strategy are now the auth path:
 users authenticate to Jenkins as their OpenShift identity through the
 public Jenkins Route — no OpenShift role on jenkins-project required.
 
-scripts/06-create-jenkins-folder.groovy provisions a per-user folder
+scripts/06-create-github-credential.groovy installs the github-pat
+Jenkins credential (sourced from GITHUB_PAT env var, set in Stage 1) so
+pipeline jobs can clone this repo.
+
+scripts/07-create-jenkins-folder.groovy provisions a per-user folder
 with Item.Read/Build/Cancel granted to that user only, plus a
 parameterized sre-pipeline job inside that folder targeting the user's
 own namespace. Validated end-to-end with user1.
@@ -572,13 +779,13 @@ own namespace. Validated end-to-end with user1.
 
 ---
 
-### Stage 9 — Scale to 3 users (user2, user3) and validate concurrency
+### Stage 10 — Scale to 3 users (user2, user3) and validate concurrency
 
 **Goal:** Confirm isolation and concurrency hold under multi-user load before going wide.
 
 **Steps:**
-- For user2 and user3, run scripts 04, 05, and 06.
-- Optionally rebuild the per-user pipeline jobs from a single loop in `scripts/07-bulk-create.sh`.
+- For user2 and user3, run `scripts/04-create-user-project.sh`, `scripts/05-deploy-user-app.sh`, and `scripts/07-create-jenkins-folder.groovy`.
+- Optionally wrap the three calls in a single loop as `scripts/08-bulk-create.sh`.
 
 **Test:**
 - Log in as each of user1/user2/user3 in separate browsers.
@@ -591,7 +798,7 @@ own namespace. Validated end-to-end with user1.
 ```
 Scale to 3 users and validate concurrency + isolation
 
-scripts/07-bulk-create.sh wraps the per-user provisioning + folder
+scripts/08-bulk-create.sh wraps the per-user provisioning + folder
 creation in a loop. Validated with 3 concurrent pipeline runs from
 distinct OpenShift users — each pipeline targets only its own
 user{N}-project namespace and Jenkins folder; no cross-tenant access
@@ -602,14 +809,14 @@ observed. Bob API showed no rate limiting at this scale.
 
 ---
 
-### Stage 10 — Scale to all 20 users + add quotas, network policies, key rotation prep
+### Stage 11 — Scale to all 20 users + add quotas, network policies, key rotation prep
 
 **Goal:** Full event capacity with operational guardrails in place.
 
 **Steps:**
-1. Run `scripts/07-bulk-create.sh` for user4 through user20.
+1. Run `scripts/08-bulk-create.sh` for user4 through user20.
 2. Apply the resource quota loop from "Security Considerations" to every user namespace.
-3. Apply the NetworkPolicy template to every user namespace (deny cross-user traffic).
+3. Apply the NetworkPolicy template (Security Considerations §2) to every user namespace, substituting the namespace name into both selectors.
 4. Pre-stage a rotation API key: store as `bob-api-key-standby` Secret so a rotation is one `oc patch` away during the event.
 
 **Test:**
@@ -643,8 +850,8 @@ Each lab can define its own Bob mode (custom role definition + rules + tool perm
 ### How it works
 
 1. **Bob discovers project modes from the workspace.** When the `bob` CLI starts, it reads `.bob/custom_modes.yaml` and `.bob/rules-<slug>/` from its current working directory.
-2. **The workspace is shared with the sidecar.** The Jenkins Kubernetes plugin mounts the same workspace volume into every container in the agent pod (this is also what makes `askBob` work — see Stage 6). When the pipeline runs `checkout scm`, the repo's `.bob/` directory lands in the workspace and becomes visible to the `bob-cli` sidecar.
-3. **`askBob` already accepts the mode.** The signature `askBob(promptName, vars, mode)` from Stage 2 passes `--mode <slug>` to the CLI when `mode` is supplied. Nothing else to wire up.
+2. **The workspace is shared with the sidecar.** The Jenkins Kubernetes plugin mounts the same workspace volume into every container in the agent pod (this is also what makes `askBob` work — see Stage 7). When the pipeline runs `checkout scm`, the repo's `.bob/` directory lands in the workspace and becomes visible to the `bob-cli` sidecar.
+3. **`askBob` already accepts the mode.** The signature `askBob(promptName, vars, mode)` from Stage 3 passes `--mode <slug>` to the CLI when `mode` is supplied. Nothing else to wire up.
 
 The result: a lab adds a mode by adding files to its branch. The next pipeline run on that branch sees the new mode automatically. Participants can `cat .bob/custom_modes.yaml` or `ls .bob/rules-lab-N/` to see exactly what's shaping Bob's behavior — the mode is a first-class part of the lab content, not hidden inside an image.
 
@@ -751,11 +958,12 @@ spec:
   - from:
     - namespaceSelector:
         matchLabels:
-          name: user1-project
+          kubernetes.io/metadata.name: user1-project
     - namespaceSelector:
         matchLabels:
-          name: jenkins-project
+          kubernetes.io/metadata.name: jenkins-project
 ```
+> Selector uses `kubernetes.io/metadata.name`, the auto-applied namespace label (Kubernetes 1.22+). The previous version used `name:`, which `oc new-project` does not set — that would have over-blocked, denying all ingress including from `jenkins-project`.
 
 ### 3. Resource Quotas
 Prevent resource exhaustion:
@@ -845,7 +1053,7 @@ Re-uses the same scripts introduced in Stages 7 and 8:
 ./scripts/04-create-user-project.sh user21
 ./scripts/05-deploy-user-app.sh user21
 # Create the Jenkins folder + pipeline job for the new user
-# (the Groovy script from Stage 8, parameterized by user)
+# (the Groovy script from Stage 9, parameterized by user)
 ./scripts/06-create-jenkins-folder.groovy user21
 ```
 
@@ -858,7 +1066,7 @@ oc delete project user5-project
 
 ### Updating Bob CLI
 ```bash
-# Rebuild the Bob CLI image (BuildConfig named `sre-bob-cli`, created in Stage 5)
+# Rebuild the Bob CLI image (BuildConfig named `sre-bob-cli`, created in Stage 6)
 oc -n jenkins-project start-build sre-bob-cli --from-dir=k8s/openshift/bob-cli --follow
 
 # No Jenkins restart needed — the next pipeline run pulls the new image
@@ -907,7 +1115,7 @@ What this does **not** affect: API cost, API rate limits, or per-user behavior. 
 ### Next Steps:
 1. Review this plan.
 2. Begin **Stage 0** of the Implementation Plan (create the working branch).
-3. Work the stages in order. Commit each stage manually after its test passes; Claude waits for explicit "committed" before starting the next stage.
-4. Stages 7–9 are the natural validation gates — pause after Stage 9 to confirm everything looks good before scaling to the full 20 users in Stage 10.
+3. Work the stages in order. Commit each stage manually after its test passes before moving to the next.
+4. Stages 8–10 are the natural validation gates — pause after Stage 10 to confirm everything looks good before scaling to the full 20 users in Stage 11.
 
 The architecture follows Kubernetes best practices and leverages OpenShift's built-in RBAC for security — this is the right approach for a multi-user lab environment.
