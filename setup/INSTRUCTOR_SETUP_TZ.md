@@ -153,7 +153,7 @@ helm repo update
 1. The Jenkins chart runs as UID 1000. Apply the SCC binding before installing so it takes effect the moment Helm creates the ServiceAccount:
 
     ```bash
-    oc apply -f assets/jenkins-scc.yaml
+    oc apply -f setup/assets/jenkins-scc.yaml
     ```
 
     Verify:
@@ -166,7 +166,7 @@ helm repo update
 
 #### 3.1.4 Create the Jenkins Values file
 
-1. Create a duplicate of the `template-jenkins-values_v2.yaml` file and call it `jenkins-values.yaml`.
+1. Create a duplicate of the `setup/assets/template-jenkins-values_v2.yaml` file and call it `setup/assets/jenkins-values.yaml`.
 
 1. [OPTIONAL] Validate the YAML before installing:
 
@@ -179,7 +179,7 @@ helm repo update
 
 ```bash
 helm install jenkins jenkins/jenkins \
-  -f assets/jenkins-values.yaml \
+  -f setup/assets/jenkins-values.yaml \
   -n jenkins \
   --wait \
   --timeout 10m
@@ -216,7 +216,7 @@ helm install jenkins jenkins/jenkins \
 1. Jenkins usually starts unsecured by default. Run the following script to generate the security setup for Jenkins (paste in the admin password from previous step.):
 
     ```bash
-    uv run scripts/generate-security-setup.py --password <admin-password>
+    uv run setup/scripts/generate-security-setup.py --password <admin-password>
     ```
 
 1. Navigate to `https://<jenkins-route>/script` in your browser.
@@ -232,7 +232,7 @@ Since JCasC is disabled to avoid startup issues, users are added using the Jenki
 1. Generate the user creation script:
 
     ```bash
-    uv run scripts/generate-jenkins-users_v2.py 20 --password Workshop2024!
+    uv run setup/scripts/generate-jenkins-users_v2.py 20 --password Workshop2024!
     ```
 
 1. Logged in as `admin`, go to `https://<jenkins-route>/script`, paste the output from the above user creation script, and click **Run**. Verify the output shows `Done — 20 users created`.
