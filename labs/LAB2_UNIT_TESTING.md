@@ -1,13 +1,23 @@
 # Lab 2 — Unit Testing with Bob
 
-## What you'll build
+## Overview of Lab 2
 
-- A custom Bob mode for **writing** unit tests (used in your IDE)
-- A custom Bob mode for **analyzing** test failures (used in the pipeline)
-- A `Unit Tests` stage in your Jenkinsfile that runs `mvn test`
-- A deliberately broken test that shows your failure-analyzer mode in action
+Lab 2 builds on the **foundational infrastructure** from Lab 1 to add automated unit test analysis to your pipeline.
 
-By the end, your pipeline will catch a failing test, keep going, and have Bob explain — in plain English, in the Jenkins console — what broke and why.
+### What you'll build in Lab 2
+
+1. **A custom Bob mode for writing unit tests** (`java-unit-test-mode`) — An IDE mode that's an expert at JUnit 5 + Mockito best practices for Spring Boot applications.
+
+2. **A custom Bob mode for analyzing test failures** (`pipeline-test-failure-analyzer`) — A read-only pipeline mode that diagnoses test failures and provides actionable remediation steps.
+
+3. **A `Unit Tests` stage** in your Jenkinsfile — Uses the `askBob` helper from Lab 1 to run tests and automatically analyze failures.
+
+By the end, failing tests won't just break your build — Bob will explain what broke, why it broke, and how to fix it, all in plain English in your Jenkins console.
+
+### What you'll reuse from Lab 1
+
+- **The `askBob` helper function** — You'll call this to invoke Bob with your test-failure-analyzer mode
+- **The `jenkins-bob-integration` mode** — You'll use this in your IDE to write the Unit Tests stage
 
 ---
 
@@ -69,17 +79,7 @@ mvn test
 
 ---
 
-## Part 3 — Add the unit test stage to your Jenkinsfile
-
-Start a new task and switch to Code mode. Ask Bob to add a `Unit Tests` stage to `@Jenkinsfile`. 
-
-- Runs `mvn test` inside `order-service/`
-- **Doesn't kill the pipeline if tests fail** — you want the next stage (Bob's analysis) to run so you can see what broke. Look up the `catchError` step with `buildResult: 'UNSTABLE'`.
-- Publishes test results to the Jenkins UI via the `junit` step
-
----
-
-## Part 4 — Create a custom mode for analyzing test failures
+## Part 3 — Create a custom mode for analyzing test failures
 
 Your test-writer mode is great for the IDE, but for the pipeline you want something different: a mode that only reads (no edits), trained on test-failure diagnosis.
 
@@ -103,17 +103,31 @@ Since you won't be using this mode in the IDE, there is no need to restart Bob. 
 
 ---
 
-## Part 5 — Add the Bob to the Unit Test stage of your Jenkinsfile
+## Part 4 — Add the Unit Tests stage with Bob analysis to your Jenkinsfile
 
-Start a new task and switch to Code mode. 
+Ensure you have restarted Bob IDE for the `jenkins-bob-integration` mode to appear in your mode dropdown — modes are loaded at IDE startup.
 
-Ask Bob to adjust the `Unit Tests` stage in `@Jenkinsfile` to call Bob using your new mode when there is a test failure, then post Bob's output to the Jenkins console output. You can use the example prompt or write your own. 
+Then, start a new task and switch to the **Jenkins Bob Integration** mode. From that mode, write your own prompt that asks Bob to do all of the following:
 
-> "In @Jenkinsfile, adjust the `Unit Tests` stage to call Bob with the test failure logs. Use `container('bob-cli')` to run a shell command invoking `bob --chat-mode pipeline-test-failure-analyzer -p '...'` with a prompt telling Bob to read `/workspace/order-service/target/surefire-reports/` and relevant sources under `/workspace/order-service/src/`."
+- Add a new stage called **`Unit Tests`** to `@Jenkinsfile` that runs after the PR Review stage.
+- The stage should run `mvn test` inside the `order-service/` directory using the `build-tools` container.
+- Wrap the maven test execution in `catchError` with `buildResult: 'UNSTABLE'` so the pipeline continues even if tests fail — you want Bob's analysis to run regardless.
+- Publish test results to Jenkins UI using the `junit` step pointing to `order-service/target/surefire-reports/*.xml`.
+- After the test execution (in a separate script block or post-condition), check if tests failed by looking for test report files with failures.
+- If tests failed, call the `askBob` helper with mode `pipeline-test-failure-analyzer` and a prompt telling Bob to read the test reports from `order-service/target/surefire-reports/` and relevant source files under `order-service/src/`.
+- Capture Bob's analysis and print it between banner lines in the Jenkins console.
+- Write Bob's analysis to `bob-test-analysis.md` and archive it as a build artifact.
+
+Watch Bob work. Before pushing, read the diff and sanity-check:
+
+- The stage uses `catchError` so failures don't kill the pipeline
+- The `junit` step path matches the surefire reports location
+- `askBob` is called with the exact mode slug `pipeline-test-failure-analyzer`
+- The analysis is both printed to console and archived as an artifact
 
 ---
 
-## Part 6 — Break a test intentionally and watch Bob analyze it
+## Part 5 — Break a test intentionally and watch Bob analyze it
 
 Pick one of the existing tests (or the one your test-writer mode added) and flip an assertion so it'll fail. For example, in `OrderServiceTest.java`:
 
@@ -147,4 +161,3 @@ In Jenkins, click **Build Now**. Watch:
 ---
 
 When you're ready, open [LAB3_SECURITY_SCANNING.md](LAB3_SECURITY_SCANNING.md).
-w
