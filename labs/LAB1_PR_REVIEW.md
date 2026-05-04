@@ -96,9 +96,13 @@ The prompt you give Bob should cover the *plumbing* (where in the Jenkinsfile, w
 Read git-diff.txt and tell me what changed in this PR.
 ```
 
-Your prompt has two parts. The first is **environment context** — quirks of our Jenkins + Bob setup that Bob can't figure out from reading the repo. You have to tell it. The bullets are the same in every pipeline lab, so save them somewhere — you'll paste them into Lab 2's pipeline prompt and beyond. The second part is the actual **task**: what *this stage* does, lab-specific.
+For this lab, our prompt will have two distinct parts. 
 
-Paste this into your IDE task:
+The first is **environment context** — quirks of our Jenkins + Bob setup that Bob can't figure out from reading the repo. You have to tell it. The bullets are the same in every pipeline lab, so save them somewhere — you'll paste them into Lab 2's pipeline prompt and beyond. 
+
+The second part is the actual **task**: what *this stage* does, lab-specific.
+
+Here is an example prompt:
 
 ```
 Add a new stage called "PR Review" to my @Jenkinsfile, immediately after the Checkout stage.
