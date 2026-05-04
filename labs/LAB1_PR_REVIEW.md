@@ -86,7 +86,7 @@ def askBob(String prompt) {
 
 ---
 
-## Part 2 — Build the `PR Review` stage with a simple prompt
+## Part 2 — Build the `PR Review` stage
 
 You're going to write the stage by *describing* it to Bob and letting Bob write the Groovy. Open a new task in your Bob IDE in **Plan** mode and ask Bob to plan a `PR Review` stage for your Jenkinsfile.
 
@@ -96,7 +96,7 @@ The prompt you give Bob should cover the *plumbing* (where in the Jenkinsfile, w
 Read git-diff.txt and tell me what changed in this PR.
 ```
 
-For this lab, our prompt will have two distinct parts. 
+For these labs, our prompts for building pipeline stages will have two distinct parts. 
 
 The first is **environment context** — quirks of our Jenkins + Bob setup that Bob can't figure out from reading the repo. You have to tell it. The bullets are the same in every pipeline lab, so save them somewhere — you'll paste them into Lab 2's pipeline prompt and beyond. 
 
