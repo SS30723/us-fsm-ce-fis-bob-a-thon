@@ -1,0 +1,180 @@
+<feature_development_workflow>
+  <overview>
+    This workflow guides developers through the complete feature development lifecycle
+    with clear steps, todo tracking, and mandatory quality checkpoints.
+  </overview>
+
+  <workflow_steps>
+    <step number="1" name="Requirements Analysis" mandatory="false">
+      <description>
+        Gather and document feature requirements before any design or implementation work begins.
+      </description>
+      <todos>
+        <todo>Gather and document feature requirements</todo>
+        <todo>Identify user stories and acceptance criteria</todo>
+        <todo>List technical constraints and dependencies</todo>
+        <todo>Define success metrics</todo>
+      </todos>
+      <questions_to_ask>
+        <question>What problem does this feature solve?</question>
+        <question>Who are the users?</question>
+        <question>What are the edge cases?</question>
+        <question>Are there any performance requirements?</question>
+      </questions_to_ask>
+    </step>
+
+    <step number="2" name="Design Solution" mandatory="true">
+      <description>
+        Create a comprehensive design that will be reviewed and approved before implementation.
+      </description>
+      <todos>
+        <todo>Create high-level architecture</todo>
+        <todo>Design API contracts or interfaces</todo>
+        <todo>Plan database schema changes (if any)</todo>
+        <todo>Identify reusable components</todo>
+        <todo>Document design decisions</todo>
+      </todos>
+      <deliverables>
+        <deliverable>Architecture diagram</deliverable>
+        <deliverable>API specifications</deliverable>
+        <deliverable>Data models</deliverable>
+        <deliverable>Design document</deliverable>
+      </deliverables>
+      <mandatory_checkpoint>
+        User must approve design before proceeding to implementation
+      </mandatory_checkpoint>
+    </step>
+
+    <step number="3" name="Implementation" mandatory="false">
+      <description>
+        Implement the feature following the approved design and coding standards.
+      </description>
+      <todos>
+        <todo>Set up feature branch</todo>
+        <todo>Implement core functionality</todo>
+        <todo>Follow coding standards</todo>
+        <todo>Add inline documentation</todo>
+        <todo>Handle error cases</todo>
+      </todos>
+      <best_practices>
+        <practice>Write clean, readable code</practice>
+        <practice>Keep functions small and focused</practice>
+        <practice>Use meaningful variable names</practice>
+        <practice>Add comments for complex logic</practice>
+      </best_practices>
+    </step>
+
+    <step number="4" name="Testing" mandatory="true">
+      <description>
+        Comprehensive testing to ensure feature works correctly and meets requirements.
+      </description>
+      <todos>
+        <todo>Write unit tests (minimum 80% coverage)</todo>
+        <todo>Write integration tests</todo>
+        <todo>Perform manual testing</todo>
+        <todo>Test edge cases and error scenarios</todo>
+        <todo>Verify performance requirements</todo>
+      </todos>
+      <mandatory_checkpoint>
+        All tests must pass before proceeding to documentation
+      </mandatory_checkpoint>
+    </step>
+
+    <step number="5" name="Documentation" mandatory="false">
+      <description>
+        Create comprehensive documentation for the feature.
+      </description>
+      <todos>
+        <todo>Update API documentation</todo>
+        <todo>Write user-facing documentation</todo>
+        <todo>Add code examples</todo>
+        <todo>Update changelog</todo>
+        <todo>Document configuration changes</todo>
+      </todos>
+    </step>
+
+    <step number="6" name="Code Review" mandatory="false">
+      <description>
+        Submit code for peer review and address feedback.
+      </description>
+      <todos>
+        <todo>Self-review checklist</todo>
+        <todo>Submit pull request</todo>
+        <todo>Address review comments</todo>
+        <todo>Verify CI/CD passes</todo>
+        <todo>Get approval from reviewers</todo>
+      </todos>
+    </step>
+
+    <step number="7" name="Deployment Preparation" mandatory="false">
+      <description>
+        Prepare for safe deployment to production.
+      </description>
+      <todos>
+        <todo>Create deployment plan</todo>
+        <todo>Prepare rollback strategy</todo>
+        <todo>Update monitoring and alerts</todo>
+        <todo>Communicate to stakeholders</todo>
+        <todo>Schedule deployment window</todo>
+      </todos>
+    </step>
+  </workflow_steps>
+
+  <user_options>
+    <option_group name="testing_strategy">
+      <question>What testing approach should we use?</question>
+      <options>
+        <option value="unit">
+          <label>Unit tests only</label>
+          <description>Faster, less coverage</description>
+        </option>
+        <option value="unit_integration">
+          <label>Unit + Integration tests</label>
+          <description>Balanced approach</description>
+        </option>
+        <option value="full_pyramid">
+          <label>Full test pyramid including E2E</label>
+          <description>Comprehensive, slower</description>
+        </option>
+      </options>
+    </option_group>
+
+    <option_group name="documentation_level">
+      <question>What level of documentation is needed?</question>
+      <options>
+        <option value="minimal">
+          <label>Minimal</label>
+          <description>Inline comments + README update</description>
+        </option>
+        <option value="standard">
+          <label>Standard</label>
+          <description>API docs + user guide</description>
+        </option>
+        <option value="comprehensive">
+          <label>Comprehensive</label>
+          <description>Full documentation suite</description>
+        </option>
+      </options>
+    </option_group>
+
+    <option_group name="deployment_approach">
+      <question>What deployment approach should we use?</question>
+      <options>
+        <option value="direct">
+          <label>Direct deployment</label>
+          <description>Faster, higher risk</description>
+        </option>
+        <option value="staged">
+          <label>Staged rollout</label>
+          <description>Gradual, safer</description>
+        </option>
+        <option value="feature_flag">
+          <label>Feature flag</label>
+          <description>Controlled, safest</description>
+        </option>
+      </options>
+    </option_group>
+  </user_options>
+</feature_development_workflow>
+
+<!-- Made with Bob -->

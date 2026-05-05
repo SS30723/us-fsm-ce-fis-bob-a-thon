@@ -1,0 +1,127 @@
+<feature_development_rules>
+  <core_rules>
+    <rule priority="critical">
+      <name>Never skip mandatory steps</name>
+      <description>
+        Design approval (Step 2) and testing (Step 4) are required checkpoints
+        that must be completed before proceeding.
+      </description>
+      <enforcement>
+        Bob will ask for explicit approval before moving past mandatory checkpoints.
+      </enforcement>
+    </rule>
+
+    <rule priority="high">
+      <name>Update todo list after each step</name>
+      <description>
+        Use the update_todo_list tool to track progress through the workflow.
+      </description>
+      <format>
+        - [ ] = Pending
+        - [-] = In Progress
+        - [x] = Completed
+      </format>
+    </rule>
+
+    <rule priority="high">
+      <name>Ask for approval at mandatory checkpoints</name>
+      <description>
+        Before proceeding past Step 2 (Design) or Step 4 (Testing), explicitly
+        ask the user for approval to continue.
+      </description>
+    </rule>
+
+    <rule priority="medium">
+      <name>Document decisions throughout the process</name>
+      <description>
+        Keep a record of important decisions, trade-offs, and rationale at each step.
+      </description>
+    </rule>
+
+    <rule priority="medium">
+      <name>Keep user informed of progress and blockers</name>
+      <description>
+        Proactively communicate status, potential issues, and next steps.
+      </description>
+    </rule>
+  </core_rules>
+
+  <step_specific_rules>
+    <step_rules step="1" name="Requirements Analysis">
+      <rule>Ask clarifying questions to ensure complete understanding</rule>
+      <rule>Document all requirements in a structured format</rule>
+      <rule>Identify and document assumptions</rule>
+      <rule>Flag any ambiguous or conflicting requirements</rule>
+    </step_rules>
+
+    <step_rules step="2" name="Design Solution">
+      <rule>Create visual diagrams for complex architectures</rule>
+      <rule>Document design decisions and alternatives considered</rule>
+      <rule>Identify potential risks and mitigation strategies</rule>
+      <rule>Ensure design is reviewable and understandable</rule>
+      <rule>MANDATORY: Obtain explicit approval before implementation</rule>
+    </step_rules>
+
+    <step_rules step="3" name="Implementation">
+      <rule>Follow project coding standards and conventions</rule>
+      <rule>Write self-documenting code with clear names</rule>
+      <rule>Add comments for complex or non-obvious logic</rule>
+      <rule>Handle errors gracefully with appropriate messages</rule>
+      <rule>Keep commits small and focused</rule>
+    </step_rules>
+
+    <step_rules step="4" name="Testing">
+      <rule>Achieve minimum 80% code coverage with unit tests</rule>
+      <rule>Test both happy path and error scenarios</rule>
+      <rule>Include edge case testing</rule>
+      <rule>Verify performance meets requirements</rule>
+      <rule>MANDATORY: All tests must pass before proceeding</rule>
+    </step_rules>
+
+    <step_rules step="5" name="Documentation">
+      <rule>Update all affected documentation</rule>
+      <rule>Include code examples where appropriate</rule>
+      <rule>Document configuration changes</rule>
+      <rule>Update changelog with user-facing changes</rule>
+    </step_rules>
+
+    <step_rules step="6" name="Code Review">
+      <rule>Perform self-review before submitting</rule>
+      <rule>Write clear PR description with context</rule>
+      <rule>Respond to feedback constructively</rule>
+      <rule>Ensure CI/CD pipeline passes</rule>
+    </step_rules>
+
+    <step_rules step="7" name="Deployment Preparation">
+      <rule>Create detailed deployment plan</rule>
+      <rule>Document rollback procedure</rule>
+      <rule>Update monitoring and alerting</rule>
+      <rule>Communicate deployment schedule to stakeholders</rule>
+    </step_rules>
+  </step_specific_rules>
+
+  <quality_standards>
+    <standard category="code_quality">
+      <requirement>Functions should be small and focused (< 50 lines)</requirement>
+      <requirement>Cyclomatic complexity should be < 10</requirement>
+      <requirement>No code duplication (DRY principle)</requirement>
+      <requirement>Proper error handling throughout</requirement>
+    </standard>
+
+    <standard category="testing">
+      <requirement>Minimum 80% code coverage</requirement>
+      <requirement>All critical paths tested</requirement>
+      <requirement>Edge cases covered</requirement>
+      <requirement>Integration tests for component interactions</requirement>
+    </standard>
+
+    <standard category="documentation">
+      <requirement>API endpoints fully documented</requirement>
+      <requirement>Complex logic explained in comments</requirement>
+      <requirement>README updated with new features</requirement>
+      <requirement>Configuration changes documented</requirement>
+    </standard>
+  </quality_standards>
+</feature_development_rules>
+
+<!-- Made with Bob -->

@@ -1,0 +1,207 @@
+<bug_fix_rules>
+  <core_rules>
+    <rule priority="critical">
+      <name>Never skip reproduction</name>
+      <description>
+        If you can't reproduce the bug, you can't verify the fix works.
+        Always ensure the bug is reproducible before proceeding with investigation.
+      </description>
+      <enforcement>
+        Bob will require documented reproduction steps before moving to root cause analysis.
+      </enforcement>
+    </rule>
+
+    <rule priority="critical">
+      <name>Always add regression tests</name>
+      <description>
+        Every bug fix must include an automated test that would have caught the bug.
+        This prevents the bug from returning in future changes.
+      </description>
+      <enforcement>
+        Step 4 (Testing) is mandatory and must include a new regression test.
+      </enforcement>
+    </rule>
+
+    <rule priority="high">
+      <name>Keep fixes focused</name>
+      <description>
+        Don't mix bug fixes with refactoring, new features, or unrelated changes.
+        Each fix should address one specific bug.
+      </description>
+      <rationale>
+        Focused fixes are easier to review, test, and rollback if needed.
+      </rationale>
+    </rule>
+
+    <rule priority="high">
+      <name>Document thoroughly</name>
+      <description>
+        Future developers need to understand why the bug occurred and how it was fixed.
+        Include comments in code and detailed PR descriptions.
+      </description>
+    </rule>
+
+    <rule priority="high">
+      <name>Test comprehensively</name>
+      <description>
+        Verify the fix works AND ensure no new issues were introduced.
+        Run full test suite, not just the new regression test.
+      </description>
+    </rule>
+
+    <rule priority="medium">
+      <name>Update todo list after each step</name>
+      <description>
+        Track progress through the workflow using the update_todo_list tool.
+      </description>
+      <format>
+        - [ ] = Pending
+        - [-] = In Progress
+        - [x] = Completed
+      </format>
+    </rule>
+
+    <rule priority="medium">
+      <name>Get approval before deploying to production</name>
+      <description>
+        Ensure code review is complete and stakeholders are informed before production deployment.
+      </description>
+    </rule>
+  </core_rules>
+
+  <step_specific_rules>
+    <step_rules step="1" name="Reproduce the Bug">
+      <rule>Document exact steps to reproduce</rule>
+      <rule>Capture all error messages and stack traces</rule>
+      <rule>Note the environment (OS, browser, version, etc.)</rule>
+      <rule>Verify bug exists in current version</rule>
+      <rule>Test if bug is consistent or intermittent</rule>
+    </step_rules>
+
+    <step_rules step="2" name="Root Cause Analysis">
+      <rule>Use debugging tools systematically</rule>
+      <rule>Check git history for related changes</rule>
+      <rule>Look for similar issues in issue tracker</rule>
+      <rule>Document the root cause clearly</rule>
+      <rule>Assess impact on other parts of the system</rule>
+    </step_rules>
+
+    <step_rules step="3" name="Develop Fix">
+      <rule>Fix the root cause, not just symptoms</rule>
+      <rule>Keep changes minimal and focused</rule>
+      <rule>Add comments explaining why the fix works</rule>
+      <rule>Consider backward compatibility</rule>
+      <rule>Handle edge cases properly</rule>
+    </step_rules>
+
+    <step_rules step="4" name="Testing">
+      <rule>Verify fix with original reproduction steps</rule>
+      <rule>Add regression test that would have caught the bug</rule>
+      <rule>Run full existing test suite</rule>
+      <rule>Test edge cases and error scenarios</rule>
+      <rule>MANDATORY: All tests must pass before proceeding</rule>
+    </step_rules>
+
+    <step_rules step="5" name="Regression Prevention">
+      <rule>Add automated test to test suite</rule>
+      <rule>Update documentation if bug revealed gaps</rule>
+      <rule>Search codebase for similar patterns</rule>
+      <rule>Consider if refactoring would prevent similar bugs</rule>
+      <rule>Document lessons learned</rule>
+    </step_rules>
+
+    <step_rules step="6" name="Code Review and Documentation">
+      <rule>Write clear PR description with context</rule>
+      <rule>Link PR to bug ticket</rule>
+      <rule>Include before/after behavior</rule>
+      <rule>Explain root cause in PR description</rule>
+      <rule>Respond to reviewer feedback promptly</rule>
+    </step_rules>
+
+    <step_rules step="7" name="Deployment and Verification">
+      <rule>Deploy to staging first</rule>
+      <rule>Verify fix in staging environment</rule>
+      <rule>Monitor logs after production deployment</rule>
+      <rule>Verify with original bug reporter</rule>
+      <rule>Update bug ticket status</rule>
+    </step_rules>
+  </step_specific_rules>
+
+  <quality_standards>
+    <standard category="fix_quality">
+      <requirement>Fix addresses root cause, not symptoms</requirement>
+      <requirement>Changes are minimal and focused</requirement>
+      <requirement>No new issues introduced</requirement>
+      <requirement>Backward compatibility maintained</requirement>
+    </standard>
+
+    <standard category="testing">
+      <requirement>Regression test added to prevent recurrence</requirement>
+      <requirement>All existing tests still pass</requirement>
+      <requirement>Edge cases tested</requirement>
+      <requirement>Manual verification with reproduction steps</requirement>
+    </standard>
+
+    <standard category="documentation">
+      <requirement>Root cause documented in PR</requirement>
+      <requirement>Fix explanation in code comments</requirement>
+      <requirement>Bug ticket updated with resolution</requirement>
+      <requirement>Lessons learned documented</requirement>
+    </standard>
+  </quality_standards>
+
+  <communication_guidelines>
+    <guideline>
+      <situation>Critical bug affecting production</situation>
+      <action>Immediately notify stakeholders and provide ETA for fix</action>
+    </guideline>
+    <guideline>
+      <situation>Bug reveals larger architectural issue</situation>
+      <action>Document the issue and discuss with team for future refactoring</action>
+    </guideline>
+    <guideline>
+      <situation>Workaround available while fix is in progress</situation>
+      <action>Document workaround and communicate to affected users</action>
+    </guideline>
+    <guideline>
+      <situation>Fix deployed to production</situation>
+      <action>Verify with original reporter and update knowledge base</action>
+    </guideline>
+  </communication_guidelines>
+
+  <best_practices>
+    <practice category="investigation">
+      <name>Use systematic debugging</name>
+      <description>
+        Follow a methodical approach: reproduce, isolate, identify, fix, verify.
+        Don't jump to conclusions without evidence.
+      </description>
+    </practice>
+
+    <practice category="fixing">
+      <name>Prefer simple fixes</name>
+      <description>
+        The simplest fix that addresses the root cause is usually the best.
+        Avoid over-engineering the solution.
+      </description>
+    </practice>
+
+    <practice category="testing">
+      <name>Test like a user</name>
+      <description>
+        In addition to automated tests, manually test the fix as a user would.
+        This often reveals issues automated tests miss.
+      </description>
+    </practice>
+
+    <practice category="prevention">
+      <name>Learn from bugs</name>
+      <description>
+        Every bug is an opportunity to improve. Document what you learned
+        and how similar bugs can be prevented.
+      </description>
+    </practice>
+  </best_practices>
+</bug_fix_rules>
+
+<!-- Made with Bob -->

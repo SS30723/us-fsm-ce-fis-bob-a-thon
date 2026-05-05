@@ -1,0 +1,235 @@
+<bug_fix_workflow>
+  <overview>
+    This workflow guides developers through systematic bug resolution from
+    reproduction to deployment, ensuring thorough testing and prevention of recurrence.
+  </overview>
+
+  <workflow_steps>
+    <step number="1" name="Reproduce the Bug" mandatory="false">
+      <description>
+        Verify the bug exists and document exact steps to reproduce it consistently.
+      </description>
+      <todos>
+        <todo>Gather bug report details</todo>
+        <todo>Identify steps to reproduce</todo>
+        <todo>Verify bug exists in current version</todo>
+        <todo>Document reproduction steps</todo>
+        <todo>Capture error messages and logs</todo>
+      </todos>
+      <questions_to_ask>
+        <question>What are the exact steps to reproduce?</question>
+        <question>What is the expected vs actual behavior?</question>
+        <question>What environment does this occur in?</question>
+        <question>Can you reproduce it consistently?</question>
+        <question>Are there any error messages or logs?</question>
+      </questions_to_ask>
+      <deliverables>
+        <deliverable>Reproduction steps document</deliverable>
+        <deliverable>Screenshots or error logs</deliverable>
+        <deliverable>Environment details</deliverable>
+      </deliverables>
+    </step>
+
+    <step number="2" name="Root Cause Analysis" mandatory="false">
+      <description>
+        Investigate and identify the underlying cause of the bug.
+      </description>
+      <todos>
+        <todo>Review relevant code sections</todo>
+        <todo>Analyze error messages and stack traces</todo>
+        <todo>Check recent changes (git blame)</todo>
+        <todo>Identify the underlying cause</todo>
+        <todo>Document findings</todo>
+      </todos>
+      <debugging_techniques>
+        <technique>Add logging statements</technique>
+        <technique>Use debugger breakpoints</technique>
+        <technique>Review related test cases</technique>
+        <technique>Check for similar issues in issue tracker</technique>
+        <technique>Consult documentation</technique>
+      </debugging_techniques>
+      <deliverables>
+        <deliverable>Root cause explanation</deliverable>
+        <deliverable>Affected code sections identified</deliverable>
+        <deliverable>Impact assessment</deliverable>
+      </deliverables>
+    </step>
+
+    <step number="3" name="Develop Fix" mandatory="false">
+      <description>
+        Implement a focused fix that addresses the root cause.
+      </description>
+      <todos>
+        <todo>Create bug fix branch</todo>
+        <todo>Implement the fix</todo>
+        <todo>Keep changes minimal and focused</todo>
+        <todo>Add inline comments explaining the fix</todo>
+        <todo>Handle edge cases</todo>
+      </todos>
+      <best_practices>
+        <practice>Fix the root cause, not symptoms</practice>
+        <practice>Keep changes as small as possible</practice>
+        <practice>Consider backward compatibility</practice>
+        <practice>Document why the fix works</practice>
+        <practice>Avoid introducing new issues</practice>
+      </best_practices>
+    </step>
+
+    <step number="4" name="Testing" mandatory="true">
+      <description>
+        Thoroughly test the fix to ensure it resolves the bug without introducing new issues.
+      </description>
+      <todos>
+        <todo>Verify bug is fixed with reproduction steps</todo>
+        <todo>Run existing test suite</todo>
+        <todo>Add regression test for this bug</todo>
+        <todo>Test edge cases</todo>
+        <todo>Verify no new issues introduced</todo>
+      </todos>
+      <test_coverage>
+        <coverage_type>Unit tests for the fixed code</coverage_type>
+        <coverage_type>Integration tests if multiple components affected</coverage_type>
+        <coverage_type>Manual testing with original reproduction steps</coverage_type>
+        <coverage_type>Performance testing if relevant</coverage_type>
+      </test_coverage>
+      <mandatory_checkpoint>
+        All tests must pass, including new regression test, before proceeding
+      </mandatory_checkpoint>
+    </step>
+
+    <step number="5" name="Regression Prevention" mandatory="false">
+      <description>
+        Add safeguards to prevent this bug from recurring.
+      </description>
+      <todos>
+        <todo>Add automated test to prevent recurrence</todo>
+        <todo>Update documentation if needed</todo>
+        <todo>Check for similar patterns in codebase</todo>
+        <todo>Consider refactoring if bug indicates design issue</todo>
+        <todo>Document lessons learned</todo>
+      </todos>
+      <deliverables>
+        <deliverable>Regression test added to test suite</deliverable>
+        <deliverable>Updated documentation</deliverable>
+        <deliverable>Notes on similar code patterns to review</deliverable>
+      </deliverables>
+    </step>
+
+    <step number="6" name="Code Review and Documentation" mandatory="false">
+      <description>
+        Submit the fix for review and document the resolution.
+      </description>
+      <todos>
+        <todo>Self-review the fix</todo>
+        <todo>Update bug report with fix details</todo>
+        <todo>Submit pull request with clear description</todo>
+        <todo>Link PR to bug ticket</todo>
+        <todo>Address reviewer feedback</todo>
+      </todos>
+      <pr_description_should_include>
+        <item>Bug description and reproduction steps</item>
+        <item>Root cause explanation</item>
+        <item>Fix description</item>
+        <item>Testing performed</item>
+        <item>Related issues or tickets</item>
+      </pr_description_should_include>
+    </step>
+
+    <step number="7" name="Deployment and Verification" mandatory="false">
+      <description>
+        Deploy the fix and verify it resolves the issue in production.
+      </description>
+      <todos>
+        <todo>Merge approved fix</todo>
+        <todo>Deploy to staging environment</todo>
+        <todo>Verify fix in staging</todo>
+        <todo>Deploy to production</todo>
+        <todo>Monitor for issues</todo>
+        <todo>Close bug ticket</todo>
+      </todos>
+      <post_deployment>
+        <action>Monitor error logs</action>
+        <action>Check metrics for anomalies</action>
+        <action>Verify with original reporter</action>
+        <action>Update status in issue tracker</action>
+      </post_deployment>
+    </step>
+  </workflow_steps>
+
+  <user_options>
+    <option_group name="fix_approach">
+      <question>What fix approach should we use?</question>
+      <options>
+        <option value="quick">
+          <label>Quick fix</label>
+          <description>Addresses symptom, faster but may not solve root cause</description>
+        </option>
+        <option value="proper">
+          <label>Proper fix</label>
+          <description>Addresses root cause, takes longer but more robust</description>
+        </option>
+        <option value="refactor">
+          <label>Refactor</label>
+          <description>Fix + improve design, most time but prevents similar issues</description>
+        </option>
+      </options>
+    </option_group>
+
+    <option_group name="testing_scope">
+      <question>What testing scope should we use?</question>
+      <options>
+        <option value="minimal">
+          <label>Minimal</label>
+          <description>Just verify the fix works</description>
+        </option>
+        <option value="standard">
+          <label>Standard</label>
+          <description>Fix + regression test + existing tests</description>
+        </option>
+        <option value="comprehensive">
+          <label>Comprehensive</label>
+          <description>Full test suite + manual testing + performance testing</description>
+        </option>
+      </options>
+    </option_group>
+
+    <option_group name="deployment_timing">
+      <question>When should we deploy this fix?</question>
+      <options>
+        <option value="immediate">
+          <label>Immediate</label>
+          <description>Critical bug, deploy ASAP</description>
+        </option>
+        <option value="next_release">
+          <label>Next release</label>
+          <description>Include in planned deployment</description>
+        </option>
+        <option value="hotfix">
+          <label>Hotfix</label>
+          <description>Emergency patch outside normal release cycle</description>
+        </option>
+      </options>
+    </option_group>
+  </user_options>
+
+  <bug_severity_guide>
+    <severity level="critical" icon="🔴">
+      <description>System down, data loss, security breach</description>
+      <action>Fix immediately</action>
+    </severity>
+    <severity level="high" icon="🟠">
+      <description>Major functionality broken, affects many users</description>
+      <action>Fix within 24 hours</action>
+    </severity>
+    <severity level="medium" icon="🟡">
+      <description>Feature partially broken, workaround exists</description>
+      <action>Fix in next sprint</action>
+    </severity>
+    <severity level="low" icon="🟢">
+      <description>Minor issue, cosmetic problem</description>
+      <action>Fix when convenient</action>
+    </severity>
+  </bug_severity_guide>
+</bug_fix_workflow>
+
+<!-- Made with Bob -->
