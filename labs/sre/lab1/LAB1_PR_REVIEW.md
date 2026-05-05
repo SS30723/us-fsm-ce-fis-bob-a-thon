@@ -10,6 +10,7 @@
 - [Part 3 - Create the `pipeline-git-diff-overview` mode](#part-3---create-the-pipeline-git-diff-overview-mode)
 - [Part 4 — Build the `PR Review` stage](#part-4--build-the-pr-review-stage)
 - [Part 5 — Push and watch](#part-5--push-and-watch)
+- [Part 6 — Stress-test the mode (optional)](#part-6--stress-test-the-mode-optional)
 - [Stuck?](#stuck)
 
 ---
@@ -130,8 +131,6 @@ Job: senior dev glancing at a PR's git diff. Quick risk-oriented overview, not a
 Output: plain text for a Jenkins console (no ANSI, no markdown tables). Sections: Summary, Risk, Watch for. Short — if nothing notable changed, say so in one sentence.
 
 Tool groups: read only.
-
-Add a rules directory with XML files capturing the output structure and observation priorities.
 ```
 
 Read-only is deliberate — a pipeline mode should do the minimum it needs to. No IDE restart needed: Bob loads `custom_modes.yaml` fresh from the workspace on every pipeline run.
@@ -175,7 +174,13 @@ Expected:
 
 Open the archived artifact from the build page and you've got a persistent record of Bob's take on that commit — searchable in Jenkins's build history.
 
-**Optional:** make a commit that does something a senior developer would flag — add a null-unchecked parameter, or a broad `catch (Exception e)` that swallows errors, or a hardcoded secret — push, and read Bob's output. Does the risk ranking match your intuition? Does Bob surface the thing you'd mention in a code review? Tune the mode's rules if not.
+---
+
+## Part 6 — Stress-test the mode (optional)
+
+Introduce a few changes you'd flag as **high** or **critical** in a real review — broad `catch (Exception e)` that swallows errors, a hardcoded secret, a missing null check, an unbounded loop, an SQL string built by concatenation. Push and watch the build.
+
+Did the mode's risk band match your call on each one? If it under-rated something obvious, that's a signal to refine the rules in `.bob/rules-pipeline-git-diff-overview/` — tighten what counts as "high risk" and what to surface in "Watch for."
 
 ---
 
