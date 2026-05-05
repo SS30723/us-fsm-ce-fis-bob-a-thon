@@ -94,6 +94,7 @@ Piece by piece:
 Once you have a good understanding of how this helper works:
 
 ```
+git add Jenkinsfile
 git commit -m "Add askBob helper to @Jenkinsfile"
 git push
 ```
@@ -102,9 +103,13 @@ git push
 
 ## Part 2 - Use Bob to analyze git diff. 
 
-Start a new task and switch to Advanced mode. Ask Bob to analyze the diff between your branch and main. 
+Start a new task and switch to Advanced mode (bottom left of the Bob chat panel). Ask Bob to analyze the diff. Something like:
 
-Bob has the ability analyze the diff using the `obtain_git_diff` tool, the Github MCP server or even with Github CLI. 
+```
+Bob, analyze the diff between my branch and main.
+```
+
+Bob has the ability analyze the diff using the `obtain_git_diff` tool, the Github MCP server or even with Github CLI. This is something you can specify in your `AGENTS.md` file once you gain a preference.
 
 This overview of the diff is fine, but we can implement custom modes to get more detailed and better formatted information. 
 
@@ -116,9 +121,8 @@ Start a new task and switch to **Mode Writer** mode. Mode Writer turns a prompt 
 describe the behavior you want once, and Bob applies it on every future invocation of that mode.
 
 The prompt below is a starter for a senior-developer-style diff overview — a quick risk-oriented glance, not a
-full code review. Treat it as a base, not a fixed script: anything you want every PR overview to do (output
-format, patterns to flag, noise to skip, the tone you want Bob to take) belongs in this prompt rather than the
-per-stage call.
+full code review. Treat it as a base. Anything you want every PR overview to do (output
+format, patterns to flag, noise to skip, the tone you want Bob to take) belongs in this prompt.
 
 ```
 Write a custom mode with slug `pipeline-git-diff-overview`. Append it to @.bob/custom_modes.yaml — don't overwrite anything else.
@@ -135,11 +139,13 @@ Tool groups: read only.
 
 Read-only is deliberate — a pipeline mode should do the minimum it needs to. No IDE restart needed: Bob loads `custom_modes.yaml` fresh from the workspace on every pipeline run.
 
+Run the prompt and answer any questions Bob might have about the implementation. 
+
 ---
 
 ## Part 4 — Build the `PR Review` stage
 
-Now that you have created a custom mode, let's add the new stage to the `Jenkinsfile`. Start a new task, and switch to the provided **Jenkins Pipeline Integration** mode. This mode was provided to minimize coniguration issues with the environment. It knows about `askBob`, the build-tools container, output archiving, and `catchError` resilience patterns. Rules live in `.bob/rules-jenkins-bob-integration/` if you want to look.
+Now that you have created a custom mode, let's add the new stage to the `Jenkinsfile`. Start a new task, and switch to the provided **Jenkins Pipeline Integration** mode. This mode was provided to minimize configuration issues with the environment. It knows about `askBob`, the build-tools container, output archiving, and `catchError` resilience patterns. Rules live in `.bob/rules-jenkins-bob-integration/` if you want to look.
 
 Paste the following prompt:
 
@@ -151,6 +157,8 @@ Paste the following prompt:
     asking it to read git-diff.txt and produce the overview
   - Save the analysis to bob-pr-review.md and archive it as a build artifact
   ```
+
+  Provide feedback to Bob where needed and consider turning on auto-approval for some tool calls. 
 
 ---
 
