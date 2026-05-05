@@ -45,7 +45,7 @@ class OrderServiceTest {
     void getAllOrders_returnsAllOrders() {
         when(orderRepository.findAll()).thenReturn(Arrays.asList(testOrder));
         List<Order> orders = orderService.getAllOrders();
-        assertThat(orders).hasSize(1);
+        assertThat(orders).hasSize(2);
         assertThat(orders.get(0).getCustomerName()).isEqualTo("John Doe");
     }
 
@@ -76,6 +76,34 @@ class OrderServiceTest {
         Order created = orderService.createOrder(newOrder);
         assertThat(created.getStatus()).isEqualTo("PENDING");
     }
+    @Test
+    void createOrder_nullCustomerName_savesOrder() {
+        Order newOrder = new Order();
+        newOrder.setCustomerName(null);
+        newOrder.setProduct("Gadget");
+        newOrder.setAmount(new BigDecimal("49.99"));
+
+        when(orderRepository.save(any(Order.class))).thenReturn(newOrder);
+
+        Order created = orderService.createOrder(newOrder);
+        assertThat(created.getCustomerName()).isNull();
+        verify(orderRepository).save(any(Order.class));
+    }
+
+    @Test
+    void createOrder_emptyCustomerName_savesOrder() {
+        Order newOrder = new Order();
+        newOrder.setCustomerName("");
+        newOrder.setProduct("Gadget");
+        newOrder.setAmount(new BigDecimal("49.99"));
+
+        when(orderRepository.save(any(Order.class))).thenReturn(newOrder);
+
+        Order created = orderService.createOrder(newOrder);
+        assertThat(created.getCustomerName()).isEmpty();
+        verify(orderRepository).save(any(Order.class));
+    }
+
 
     @Test
     void updateOrderStatus_validTransition_succeeds() {

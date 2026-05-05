@@ -55,12 +55,17 @@ The prompt below is a starter for a Java unit-test specialist. Treat it as a bas
 ```
 Write a custom mode with slug `java-unit-test-mode`. Append it to @.bob/custom_modes.yaml — don't overwrite anything else.
 
-Job: write Java unit tests for this Spring Boot application. JUnit 5 + Mockito + AssertJ. Before writing a new test, read the related existing tests under @order-service/src/test/ to match this repo's conventions (assertion library, mocking style, naming pattern, fixture setup).
+Job: write Java unit tests for this Spring Boot application. JUnit 5 + Mockito + AssertJ. 
+Before writing a new test, read the related existing tests under @order-service/src/test/ to match this repo's conventions (assertion library, mocking style, naming pattern, fixture setup).
 
 Tool groups:
   - read
   - edit
+
+  Add some instructions files for the mode. The instruction files should be Markdown files, not xml. 
 ```
+
+Notice the prompt above tells the **Mode Writer** mode to write Markdown files instead of XML this time. Both are acceptable practice with Bob. 
 
 Once Bob finishes, **restart Bob IDE** so the new mode appears in your mode dropdown — IDE modes are loaded at IDE startup.
 
@@ -74,9 +79,13 @@ In a new task, switch to **Ask** mode and ask:
 
 Pick one of Bob's suggestions, switch to **Java Unit Test** mode (your new mode) in the same task, and ask:
 
-> "Write a test for [the edge case] and add it to @OrderServiceTest.java. Then run it and make sure it passes."
+> "Write a test for [the edge case] and add it to @OrderServiceTest.java."
 
-Bob will write the test, run it with `mvn test`, and iterate if it fails. The test isn't surfacing anything new about the application — that's not the point. The point is feeling how the mode bakes your conventions into every new test without you restating them.
+After Bob writes the tests, ask Bob to run the test.
+
+> "Run the tests and ensure they pass."
+
+Bob will ask to switch modes because we didn't give the unit test mode the `command` tool group. 
 
 ---
 
