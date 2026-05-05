@@ -1,11 +1,15 @@
 // ═══════════════════════════════════════════════════════════════════
-// FIS Bob-a-thon — Lab 2 Solution (Jenkinsfile.lab2solution)
+// FIS Bob-a-thon — Base Pipeline (Jenkinsfile)
 //
-// Cumulative state after Lab 2: base pipeline + Lab 1 PR review stage
-// (TBD — added in a future commit) + Lab 2 Unit Tests stage that runs
-// `mvn test` and has Bob analyze any failures via a custom mode.
+// Starting point for the 5-lab workshop. Provisions a Kubernetes
+// agent pod with three containers — build-tools (Maven + JDK17),
+// oc-tools (OpenShift CLI), and bob (IBM Bob CLI) — sharing a
+// workspace-volume emptyDir mounted at /workspace on all three,
+// with HOME set to /workspace so Bob can read .bob/custom_modes.yaml
+// from the checkout.
 //
-// See labs/LAB2_UNIT_TESTING.md for the participant walkthrough.
+// This file has a single Checkout stage. Each lab adds one more
+// stage beneath it; see labs/LAB<N>_*.md for instructions.
 //
 // Before running: if your OpenShift project is NOT named `jenkins`,
 // update the `bob` container image URL below.
@@ -81,45 +85,122 @@ spec:
         }
 
         // ── Lab 1: PR / Git Diff Review ──────────────────────────
-        //    Add a stage here that runs Bob in a "senior developer"
-        //    mode against the git diff. See labs/LAB1_PR_REVIEW.md.
-
-        stage('Unit Tests') {
+        stage('PR Review') {
+            options {
+                timeout(time: 5, unit: 'MINUTES')
+            }
             steps {
-                echo "=== Running Unit Tests ==="
-                dir('order-service') {
-                    catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
-                        sh 'mvn test'
-                    }
-                }
-
-                echo "=== Analyzing Test Results with Bob ==="
-                container('bob') {
-                    script {
-                        def analysis = sh(
-                            returnStdout: true,
-                            script: '''
-                                bob --chat-mode pipeline-test-failure-analyzer -p "Please analyze the test failure logs in /workspace/order-service/target/surefire-reports/ and review the relevant source code under /workspace/order-service/src/ to identify the root cause of any test failures and provide recommendations for fixes." --hide-intermediary-output
-                            '''
-                        ).trim()
-
-                        echo ''
-                        echo '════════════════════════════════════════════════════'
-                        echo '  Bob Test Failure Analysis'
-                        echo '════════════════════════════════════════════════════'
-                        echo ''
+                script {
+                    echo '════════════════════════════════════════════════════════'
+                    echo '  Bob — PR Review'
+                    echo '════════════════════════════════════════════════════════'
+                    
+                    catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                        // Configure git safe directory and compute diff
+                        sh '''
+                            git config --global --add safe.directory "$WORKSPACE"
+                            git diff origin/main...HEAD > git-diff.txt || : > git-diff.txt
+                        '''
+                        
+                        // Ask Bob to analyze the diff
+                        def analysis = askBob(
+                            "Read git-diff.txt and produce the senior-developer PR overview.",
+                            'solution-pipeline-git-diff-overview'
+                        )
+                        
                         echo analysis
-                        echo ''
-                        echo '════════════════════════════════════════════════════'
-
-                        writeFile file: 'bob-analysis.md', text: analysis
+                        echo '════════════════════════════════════════════════════════'
+                        
+                        // Save analysis for archiving
+                        writeFile file: 'bob-pr-review.md', text: analysis
                     }
                 }
             }
             post {
                 always {
-                    junit '**/target/surefire-reports/*.xml'
-                    archiveArtifacts artifacts: 'bob-analysis.md', allowEmptyArchive: true
+                    archiveArtifacts artifacts: 'bob-pr-review.md', allowEmptyArchive: true
+                }
+            }
+        }
+
+        // ── Lab 2: Unit Testing ──────────────────────────────────
+        stage('Unit Tests') {
+            options {
+                timeout(time: 5, unit: 'MINUTES')
+            }
+            steps {
+                script {
+                    echo '════════════════════════════════════════════════════════'
+                    echo '  Running Unit Tests'
+                    echo '════════════════════════════════════════════════════════'
+                    
+                    // Run tests in build-tools container, continue even if tests fail
+                    catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                        sh 'mvn -f order-service/pom.xml test'
+                    }
+                }
+            }
+            post {
+                always {
+                    // Publish JUnit test results
+                    junit testResults: 'order-service/target/surefire-reports/*.xml',
+                          allowEmptyResults: true
+                }
+            }
+        }
+
+        stage('Bob Test Analysis') {
+            when {
+                expression {
+                    // Only run if test reports exist
+                    fileExists('order-service/target/surefire-reports')
+                }
+            }
+            options {
+                timeout(time: 5, unit: 'MINUTES')
+            }
+            steps {
+                script {
+                    echo '════════════════════════════════════════════════════════'
+                    echo '  Bob — Test Failure Analysis'
+                    echo '════════════════════════════════════════════════════════'
+                    
+                    catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                        // Gather test reports
+                        def reports = sh(
+                            script: 'find order-service/target/surefire-reports -name "*.txt" -exec cat {} + || true',
+                            returnStdout: true
+                        ).trim()
+                        
+                        // Build prompt for Bob
+                        def prompt = """
+Analyze the test failures from the surefire reports under order-service/target/surefire-reports/
+and the relevant source files under order-service/src/.
+
+Provide:
+1. Root cause of each failure
+2. Whether failures are related
+3. Suggested fixes with code examples
+4. Priority of fixes
+
+Test Reports:
+${reports}
+"""
+                        
+                        // Ask Bob to analyze
+                        def analysis = askBob(prompt, 'pipeline-test-failure-analyzer')
+                        
+                        echo analysis
+                        echo '════════════════════════════════════════════════════════'
+                        
+                        // Save analysis for archiving
+                        writeFile file: 'bob-test-analysis.md', text: analysis
+                    }
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'bob-test-analysis.md', allowEmptyArchive: true
                 }
             }
         }
@@ -144,5 +225,21 @@ spec:
             echo "=== Pipeline Complete ==="
             echo "Result: ${currentBuild.result ?: 'SUCCESS'}"
         }
+    }
+}
+
+def askBob(String prompt, String mode = null) {
+    container('bob') {
+        def promptFile = ".bob-prompt-${System.currentTimeMillis()}.txt"
+        writeFile file: promptFile, text: prompt
+
+        def modeFlag = mode ? "--chat-mode ${mode}" : ""
+        def analysis = sh(
+            script: """bob ${modeFlag} -p "\$(cat ${promptFile})" --hide-intermediary-output""",
+            returnStdout: true
+        ).trim()
+
+        sh "rm -f ${promptFile}"
+        return analysis
     }
 }

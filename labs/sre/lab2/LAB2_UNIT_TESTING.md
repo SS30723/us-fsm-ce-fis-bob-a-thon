@@ -96,7 +96,7 @@ Your test-writer mode is great for the IDE — it edits files and writes new tes
 Start a new task and switch to **Mode Writer** mode. The prompt below is a starter — anything you want every test-failure diagnosis to do (output format, what to surface, what to skip as noise, tone) belongs here, not in the per-stage call.
 
 ```
-Write a custom mode with slug `pipeline-test-failure-analyzer`. Append it to @.bob/custom_modes.yaml — don't overwrite anything else.
+Write a custom mode with slug `pipeline-test-failure-analyzer`. Append it to @.bob/custom_modes.yaml — don't overwrite anything.
 
 Job: diagnose JUnit / Surefire test failures and propose fixes. Read the failure reports plus the relevant source files under @order-service/src/. For each failed test:
   - One sentence on what failed and where
@@ -108,6 +108,8 @@ Output: plain text for a Jenkins console (no ANSI, no markdown tables). Sections
 
 Tool groups: read only.
 ```
+
+We didn't explicitly tell Bob to create rules files here, so it may not have. If you feel you want more detailed instructions for the mode, ask Bob in Mode Writer mode to expand the mode into rules files. 
 
 Read-only is deliberate — a pipeline mode should do the minimum it needs to. No IDE restart needed: Bob loads `custom_modes.yaml` fresh from the workspace on every pipeline run.
 
