@@ -79,11 +79,17 @@ In a new task, switch to **Ask** mode and ask:
 
 > "Read @OrderService.java and @OrderServiceTest.java. What edge cases aren't covered?"
 
-Pick one of Bob's suggestions, switch to **Java Unit Test** mode (your new mode) in the same task, and ask:
+Bob will show you something similar to this:
+
+![lab2-test-edge-cases.png](assets/lab2-test-edge-cases.png)
+
+Pick one of Bob's suggestions, like `getOrderById(null) - null ID parameter`. 
+
+Then switch to **Java Unit Test** mode (your new mode) in the same task, and ask:
 
 > "Write a test for [the edge case] and add it to @OrderServiceTest.java."
 
-After Bob writes the tests, ask Bob to run the test.
+After Bob writes the tests, ask Bob to run the test (you may need to install maven).
 
 > "Run the tests and ensure they pass."
 
@@ -136,14 +142,18 @@ Add a "Unit Tests" stage to @Jenkinsfile right after the PR Review stage. The st
 
 ## Part 5 — Push and watch
 
-The Unit Tests stage only triggers Bob's analysis when a test fails — so to see it in action, deliberately break a test before pushing. Pick one of the existing tests and flip an assertion:
+The Unit Tests stage only triggers Bob's analysis when a test fails — so to see it in action, deliberately break a test before pushing. 
+
+On line 48 of `order-service/src/test/java/com/example/service/OrderServiceTest.java`, we have the following assertion:
 
 ```java
-// before
-assertThat(result).isEqualTo(expected);
+assertThat(orders).hasSize(1);
+```
 
-// after (deliberate break)
-assertThat(result).isEqualTo(expected + 1);
+Change that to:
+
+```java
+assertThat(orders).hasSize(2);
 ```
 
 Then commit and push:
