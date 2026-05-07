@@ -3,23 +3,13 @@
 **Objective:** Learn how to perform security analysis with Bob Findings, run automated scans with SonarQube, and integrate comprehensive security checks into a CI/CD pipeline.
 
  
-**Difficulty:** Intermediate  
-**Prerequisites:** 
+**Difficulty:** Intermediate
+**Prerequisites:**
 - Setup complete (order-service, SonarQube, Jenkins running)
 - Bob CLI configured
 - Basic understanding of security concepts
 
 ---
-
-## Lab Overview
-
-In this lab, you will:
-1. Inject security vulnerabilities into the order-service code
-2. Perform manual security analysis with Bob
-3. Run automated SonarQube security scans
-4. Generate comprehensive security reports
-5. Enhance the Jenkins pipeline with security stages
-6. Create CVE analysis prompts for pipeline integration
 
 ## Table of Contents
 
@@ -34,7 +24,7 @@ In this lab, you will:
   - [Step 2.2: Perform Comprehensive Security Analysis](#step-22-perform-comprehensive-security-analysis)
   - [Step 2.3: Review Security Findings](#step-23-review-security-findings)
 - [Part 3: SonarQube Security Scanning](#part-3-sonarqube-security-scanning)
-  - [Step 3.1: Generate SonarQube Token](#step-31-generate-sonarqube-token)
+  - [Step 3.1: Create SonarQube Token](#step-31-create-sonarqube-token)
   - [Step 3.2: Run SonarQube Scan](#step-32-run-sonarqube-scan)
   - [Step 3.3: Review SonarQube Results](#step-33-review-sonarqube-results)
 - [Part 4: Enhance Jenkins Pipeline](#part-4-enhance-jenkins-pipeline)
@@ -48,6 +38,25 @@ In this lab, you will:
 - [Lab Summary](#lab-summary)
 
 ---
+
+## Lab Overview
+
+You'll inject security vulnerabilities into the order-service, analyze them with Bob's real-time findings and a comprehensive security review mode, run automated SonarQube scans, and integrate security checks into your Jenkins pipeline.
+
+### What you'll build in Lab 3
+
+1. **Security vulnerability injection** — use a script to inject 6 types of vulnerabilities into OrderService.java and observe Bob's real-time findings as they appear in your IDE.
+
+2. **Comprehensive security analysis** — import and use the Software Security Reviewer mode to generate a full application security assessment covering code, infrastructure, compliance, and remediation roadmap.
+
+3. **SonarQube integration** — generate a SonarQube token, run automated security scans, and review detailed vulnerability reports with metrics and issue tracking.
+
+4. **Enhanced Jenkins pipeline** — add a comprehensive security stage to your Jenkinsfile that runs SonarQube scans and generates security reports on every build.
+
+5. **CVE analysis prompt** — create a reusable prompt for analyzing Common Vulnerabilities and Exposures (CVEs) and integrate it into your pipeline for automated security assessments.
+
+By the end, every push triggers automated security scanning in your Jenkins pipeline, and you've practiced using Bob's security analysis capabilities across multiple tools and workflows.
+
 ---
 
 ## Before you start
@@ -91,12 +100,6 @@ Bob run script inject_vulnerabilities_modify_existing.sh
 📍 Backup:   order-service/src/main/java/com/example/orders/service/OrderService.java.backup
 ```
 
-**Verification:**
-```bash
-# Check that vulnerabilities were injected
-grep -n "BACKUP_DB_PASSWORD\|LEGACY_API_KEY\|System.out\|MD5\|printStackTrace\|Random" \
-  order-service/src/main/java/com/example/orders/service/OrderService.java
-```
 
 ### Step 1.3: Review Bob Findings After Injection
 
@@ -214,19 +217,6 @@ A detailed security analysis report containing:
 - ✅ Compliance mapping (PCI DSS, OWASP, CWE)
 - 📋 Testing recommendations
 
-**Verification:**
-```bash
-# Check report was created
-ls -lh SECURITY_ANALYSIS_REPORT.md
-
-# View executive summary
-head -100 SECURITY_ANALYSIS_REPORT.md
-
-# Count findings by severity
-grep -c "CRITICAL" SECURITY_ANALYSIS_REPORT.md
-grep -c "HIGH" SECURITY_ANALYSIS_REPORT.md
-grep -c "MEDIUM" SECURITY_ANALYSIS_REPORT.md
-```
 
 **How This Complements Bob Findings:**
 
@@ -269,16 +259,7 @@ The Software Security Reviewer mode builds upon Bob's inline findings to provide
 
 > **Note:** Switch back to **Code Mode** before proceeding with this step.
 
-**Your instructor will provide the SonarQube cluster URL.**
-
-Once you have the URL, use Bob to generate your token.
-
 **Prompt to Bob:**
-```
-Run the following to create a token for SonarQube: curl -u demo:Demo123lab123@ -X POST "https://sonarqube-sonarqube.apps.itz-8ggai0.infra01-lb.wdc04.techzone.ibm.com/api/user_tokens/generate?name=order-service-scan-$(date +%s)" 2>/dev/null
-```
-
-**Example with actual URL:**
 ```
 Run the following to create a token for SonarQube: curl -u demo:Demo123lab123@ -X POST "https://sonarqube-sonarqube.apps.itz-8ggai0.infra01-lb.wdc04.techzone.ibm.com/api/user_tokens/generate?name=order-service-scan-$(date +%s)" 2>/dev/null
 ```
@@ -293,15 +274,10 @@ Run the following to create a token for SonarQube: curl -u demo:Demo123lab123@ -
 {
   "login": "demo",
   "name": "order-service-scan-1775587069",
-  "token": "squ_4fbcce9dfc4e594d2e00f9265a9daa338b558a9b",
+  "token": "generated token",
   "createdAt": "2026-04-07T14:37:49-0400",
   "type": "USER_TOKEN"
 }
-```
-
-**Extract just the token (if you have jq installed):**
-```bash
-curl -u demo:Demo123lab123@ -X POST "https://sonarqube-sonarqube.apps.itz-8ggai0.infra01-lb.wdc04.techzone.ibm.com/api/user_tokens/generate?name=order-service-scan-$(date +%s)" 2>/dev/null | jq -r '.token'
 ```
 
 **Save the token** - you'll need it for the next step.
@@ -379,14 +355,6 @@ cd order-service && mvn clean compile sonar:sonar \
 3. 🟠 **MAJOR** - java:S106 - System.out usage (Lines 47, 60, 82, 133)
 4. 🟠 **MAJOR** - java:S112 - Generic exceptions (Line 128)
 
-**Verification:**
-```bash
-# Check report was created
-ls -lh SonarQube_Analysis_Report.md
-
-# View SonarQube dashboard
-open http://localhost:9000/dashboard?id=order-service
-```
 
 ### Step 3.3: Compare Bob vs SonarQube Findings
 
@@ -476,14 +444,6 @@ grep -r "System.out.println|printStackTrace|MD5|java.util.Random" order-service/
 - `SECURITY_HOTSPOTS` - Count of SonarQube security hotspots
 - `SECURITY_RISK` - Overall risk level (CRITICAL/HIGH/MEDIUM/LOW)
 
-**Verification:**
-```bash
-# Check Jenkinsfile was updated
-git diff Jenkinsfile
-
-# Verify security stage exists
-grep -A 50 "stage('Security Scan')" Jenkinsfile
-```
 
 ---
 
@@ -514,14 +474,6 @@ Write prompt for CVE analysis on pipeline as a txt file in pipeline/cve-analysis
 - PCI DSS compliance focus
 - Example CVE analysis
 
-**Verification:**
-```bash
-# Check prompt was created
-ls -lh pipeline/cve-analysis-prompt.txt
-
-# View prompt structure
-head -100 pipeline/cve-analysis-prompt.txt
-```
 
 ### Step 5.2: Add the CVE Analysis Prompt to the Pipeline
 
@@ -545,14 +497,6 @@ Use pipeline/cve-analysis-prompt.txt to add a CVE analysis step to the Jenkins p
 - The pipeline generates `CVE_ANALYSIS_REPORT.md`
 - CVE findings contribute to the final security summary and deployment decision
 
-**Verification:**
-```bash
-# Check Jenkinsfile includes CVE analysis logic
-grep -A 50 -i "CVE\|cve-analysis-prompt" Jenkinsfile
-
-# Review the pipeline changes
-git diff Jenkinsfile
-```
 
 ---
 
