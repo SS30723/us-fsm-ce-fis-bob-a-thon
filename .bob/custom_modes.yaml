@@ -41,8 +41,8 @@ customModes:
     groups:
       - read
       - - edit
-        - fileRegex: (\.bobmodes$|\.bob/.*\.xml$|\.yaml$)
-          description: Mode configuration files and XML instructions
+        - fileRegex: (\.bobmodes$|\.bob/.*\.xml$|\.yaml$|\.md$)
+          description: Mode configuration files, XML instructions, and markdown files
       - command
       - mcp
 
