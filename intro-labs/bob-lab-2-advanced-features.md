@@ -580,8 +580,6 @@ Tell me the ticket key Jira assigned.
 - ✅ Invoked external service tools from Advanced mode
 - ✅ Created a real Jira ticket from inside Bob — the same one you'll pull down in the afternoon
 
-> 📌 **Standalone Reference:** [`intro-labs/jira-mcp/jira-mcp-setup.md`](jira-mcp/jira-mcp-setup.md) — the same walkthrough as a standalone doc with deeper troubleshooting.
-
 ---
 
 ## Custom Modes
