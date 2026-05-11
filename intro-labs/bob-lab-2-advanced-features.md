@@ -489,10 +489,10 @@ Save the file.
 
 ### Step 3: Provide Your Credentials via `.env`
 
-The `${VAR}` placeholders need real values. A `.env.example` template ships in the repo — copy it to a `.env` at the repo root:
+The `${VAR}` placeholders need real values. A `.env.example` template ships at the repo root — copy it to a `.env`:
 
 ```bash
-cp intro-labs/jira-mcp/.env.example .env
+cp .env.example .env
 ```
 
 Open `.env` and replace the placeholders with the credentials your instructor handed out:
