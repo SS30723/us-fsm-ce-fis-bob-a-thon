@@ -238,17 +238,19 @@ If you have completed the lab and want to explore different code review workflow
 4. Include Jira ticket reference, type (feat/fix/refactor), and meaningful body text
 5. Test it by asking: "Generate a commit message for my refund changes"
 
-### Challenge 2: Create a JIRA Ticket Writer Mode
-1. Build a `jira-ticket-writer` mode that generates well-structured ticket descriptions
-2. Configure it to include acceptance criteria, technical notes, and testing considerations
-3. Have it analyze existing code to suggest related tickets (tech debt, improvements)
-4. Test by asking: "Analyze OrderService and suggest 3 improvement tickets"
-
-### Challenge 3: Create a Unit Test Writer Mode
+### Challenge 2: Create a Unit Test Writer Mode
 1. Design a `test-writer` mode specialized in JUnit 5 and Mockito
 2. Configure it to follow your team's test naming conventions
 3. Have it identify untested edge cases and generate parameterized tests
 4. Test on the refund endpoint: "Write tests for all failure scenarios"
+
+### Challenge 3: Create a Test-and-Commit Orchestrator Mode
+1. Build a `test-and-commit-orchestrator` mode that coordinates multiple workflows
+2. Configure it to use the `test-writer` mode to run tests
+3. If tests pass, use the `commit-message-writer` mode to generate a commit message
+4. Have it execute the commit with the generated message
+5. Test by asking: "Run the tests and commit when tests pass"
+6. Bonus: Add rollback logic if tests fail after code changes
 
 ### Challenge 4: Automate Review Findings Export
 1. Use Bob to parse the Bob Findings panel and export to JSON
