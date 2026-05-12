@@ -1,2 +1,4 @@
 # Allow access to test resports
 !**/target/surefire-reports/**
+
+**/Jenkinsfile*solution

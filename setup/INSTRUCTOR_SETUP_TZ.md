@@ -4,9 +4,8 @@
 
 1. [Deployment Overview](#1-deployment-overview)
    - [Architecture Decisions](#11-architecture-decisions)
-   - [Repo Layout](#12-repo-layout)
-   - [Namespace Layout](#13-namespace-layout)
-   - [Per-Build Agent Pod](#14-per-build-agent-pod)
+   - [Namespace Layout](#12-namespace-layout)
+   - [Per-Build Agent Pod](#13-per-build-agent-pod)
 2. [Prerequisites](#2-prerequisites)
    - [Cluster Requirements](#21-cluster-requirements)
    - [Instructor Tooling](#22-instructor-tooling)
@@ -16,11 +15,13 @@
 4. [IBM Bob CLI Setup](#4-ibm-bob-cli-setup)
    - [Build and push IBM Bob image](#41-build-and-push-ibm-bob-image)
    - [Create the Bob API Key Kubernetes Secret](#42-create-the-bob-api-key-kubernetes-secret)
-5. [Cluster Setup (optional)](#5-cluster-setup-optional)
-   - [Add Workshop User Accounts](#51-add-workshop-user-accounts)
-   - [Create participants group](#52-create-participants-group)
-   - [Create user projects](#53-create-user-projects)
-6. [Appendix / Reference](#appendix--reference)
+5. [Linting Tools Setup](#5-linting-tools-setup)
+   - [Build and push lint-tools image](#51-build-and-push-lint-tools-image)
+6. [Cluster Setup (optional)](#6-cluster-setup-optional)
+   - [Add Workshop User Accounts](#61-add-workshop-user-accounts)
+   - [Create participants group](#62-create-participants-group)
+   - [Create user projects](#63-create-user-projects)
+7. [Appendix / Reference](#appendix--reference)
    - [Common Issues and Fixes](#common-issues-and-fixes)
    - [Cleanup](#cleanup)
    - [Rotate the Bob API Key](#rotate-the-bob-api-key)
@@ -62,6 +63,7 @@ OpenShift Cluster
 │   ├── Jenkins master pod
 │   ├── Ephemeral agent pods        ← spun up per build, auto-deleted
 │   ├── bob-cli ImageStream
+│   ├── lint-tools ImageStream
 │   ├── Secret: bob-cli-credentials ← Kubernetes secret, independent of Jenkins PVC
 │   └── Jenkins credentials store  ← holds user GitHub PATs only
 │
@@ -77,12 +79,13 @@ OpenShift Cluster
 
 ### 1.3 Per-Build Agent Pod
 
-Every pipeline run spins up a Kubernetes pod in the `jenkins` namespace containing three containers:
+Every pipeline run spins up a Kubernetes pod in the `jenkins` namespace containing four containers:
 
 | Container | Image | Used for |
 |---|---|---|
 | `build-tools` | `maven:3.9-eclipse-temurin-17` | Compile, unit tests, package |
-| `oc-tools` | `quay.io/openshift/origin-cli:latest` | `oc start-build`, `oc rollout`, GitHub Status API calls |
+| `oc-tools` | `quay.io/openshift/origin-cli:latest` | Run hadolint, checkov, kubelinter linting tools |
+| `lint-tools` | `<internal-registry>/jenkins/lint-tools:latest` | `oc start-build`, `oc rollout`, GitHub Status API calls |
 | `bob` | `<internal-registry>/jenkins/bob-cli:latest` | AI code review (Lab 5). `BOBSHELL_API_KEY` injected at runtime. |
 
 > **Note:** The pod is deleted automatically when the pipeline finishes. Users never interact with it directly.
@@ -430,11 +433,65 @@ This approach is preferred over a Jenkins credential because:
 
 ---
 
-## 5. Cluster Setup (optional)
+## 5. Linting Tools Setup
+
+We will use a dedicated `lint-tools` container with all the linters used by the lab, so Jenkins can run them without downloading binaries during every pipeline run. This will provide:
+
+- consistent tool versions across all participants
+- faster builds because tools are already present
+- fewer transient failures caused by network downloads
+
+The `lint-tools` image will include the following tools:
+
+- [Hadolint](https://github.com/hadolint/hadolint) — Dockerfile linting
+- [Checkov](https://www.checkov.io/) — IaC and policy scanning
+- [KubeLinter](https://docs.kubelinter.io/) — Kubernetes best-practice linting
+
+### 5.1 Build and push lint-tools image
+
+1. Build the image from the Dockerfile in this repo:
+
+    ```bash
+    cd setup/lint-tools
+    podman build --platform linux/amd64 -t lint-tools:latest .
+    cd -
+    ```
+
+1. Get the OpenShift internal image registry again:
+
+    ```bash
+    REGISTRY=$(oc get route default-route -n openshift-image-registry -o jsonpath='{.spec.host}')
+    echo "Registry route: $REGISTRY"
+    ```
+
+1. Log into the registry:
+
+    ```bash
+    podman login -u unused -p "$(oc whoami -t)" --tls-verify=false "$REGISTRY"
+    ```
+
+1. Tag and push into the `jenkins` namespace. The route uses a self-signed cert, so `--tls-verify=false` is required on push:
+
+    ```bash
+    podman tag lint-tools:latest "$REGISTRY/jenkins/lint-tools:latest"
+    podman push --tls-verify=false "$REGISTRY/jenkins/lint-tools:latest"
+    ```
+
+1. Verify the ImageStream was created:
+
+    ```bash
+    oc get imagestream lint-tools -n jenkins
+    ```
+
+    Expected: a row with tag `latest`.
+
+---
+
+## 6. Cluster Setup (optional)
 
 > **This section is optional.** Per-user OpenShift namespaces are only needed if your workshop includes labs where participants deploy workloads into their own sandbox namespaces. The 5-lab Bob-a-thon workshop is analysis-only (Bob runs against code in the pipeline) and doesn't require this section. Skip it unless a future lab adds a deploy step.
 
-### 5.1 Add Workshop User Accounts
+### 6.1 Add Workshop User Accounts
 
 > **This step is optional.** Participants do not need OpenShift console access to
 > complete the workshop labs. All pipeline interactions with OpenShift use the Jenkins
@@ -455,7 +512,7 @@ This approach is preferred over a Jenkins credential because:
     done
     ```
 
-### 5.2 Create participants group
+### 6.2 Create participants group
 
 1. Creating a group makes it easy to apply RBAC in bulk and to clean up afterwards:
 
@@ -478,7 +535,7 @@ This approach is preferred over a Jenkins credential because:
     oc get group workshop-participants -o yaml
     ```
 
-### 5.3 Create user projects
+### 6.3 Create user projects
 
 1. Edit the `USERS` array in the `create-projects.sh` file to match your participant list, then run the script to create the user projects and set up the privileges.
 
@@ -574,4 +631,3 @@ curl -s -X POST \
 > **Note:** When Jenkins is still unsecured (before Step 1i Script 1 has been
 > run), omit the `-u` flag and the crumb is not required for the first POST.
 > After security is enabled, both the `-u` flag and crumb are required.
-

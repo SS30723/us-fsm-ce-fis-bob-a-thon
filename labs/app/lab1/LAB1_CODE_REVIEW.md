@@ -7,13 +7,12 @@
   - [What you'll build in Lab 1](#what-youll-build-in-lab-1)
   - [What you'll reuse from the repo](#what-youll-reuse-from-the-repo)
 - [Before you start](#before-you-start)
-- [Part 1 — Capture your team's standards as Bob rules](#part-1--capture-your-teams-standards-as-bob-rules)
-- [Part 2 — Build the refund feature in Code mode](#part-2--build-the-refund-feature-in-code-mode)
+- [Part 1 — Branch off main and capture team standards as Bob rules](#part-1--branch-off-main-and-capture-team-standards-as-bob-rules)
+- [Part 2 — Pull the ticket, move it In Progress, build the feature](#part-2--pull-the-ticket-move-it-in-progress-build-the-feature)
 - [Part 3 — Pre-commit gauntlet, lap 1: built-in `/review`](#part-3--pre-commit-gauntlet-lap-1-built-in-review)
 - [Part 4 — Pre-commit gauntlet, lap 2: standards-aware review with a custom mode](#part-4--pre-commit-gauntlet-lap-2-standards-aware-review-with-a-custom-mode)
 - [Part 5 — Pre-commit gauntlet, lap 3: security review](#part-5--pre-commit-gauntlet-lap-3-security-review)
-- [Part 6 — Commit with a Bob-generated message](#part-6--commit-with-a-bob-generated-message)
-- [Part 7 — Open the PR and post the security review](#part-7--open-the-pr-and-post-the-security-review)
+- [Part 6 — Optional: Advanced Code Review Challenges](#part-6--optional-advanced-code-review-challenges)
 - [Stuck?](#stuck)
 
 ---
@@ -30,9 +29,9 @@ You'll pull the ticket down with the Jira MCP server you configured this morning
 
 ### What you'll build in Lab 1
 
-1. **Workspace rules** in `.bob/rules/` — your team's coding standards (logging, money handling, no hardcoded secrets, commit message convention) written once. Every Bob mode that runs in this workspace reads them, including `/review` and the commit-message generator.
+1. **Workspace rules** in `.bob/rules/` — your team's coding standards (SLF4J logging conventions, `BigDecimal` for money, no hardcoded secrets, conventional-commit message format) written once. Every Bob mode that runs in this workspace reads them, including `/review` and the commit-message generator.
 
-2. **The refund feature itself** — POST `/api/orders/{id}/refund`, status transition to `REFUNDED`, tests. Built in **Code** mode against the Jira ticket. The spec is intentionally loose; the gaps are what review is for.
+2. **The refund feature itself** — `POST /api/orders/{id}/refund` plus tests, implemented in **Code** mode from the Jira ticket's acceptance criteria. The ticket is intentionally minimal; concerns it doesn't mention (authorization, audit logging, idempotency) are exactly what the three review laps will surface.
 
 3. **An `orders-code-reviewer` custom mode** — built with **Mode Writer**, rules in `.bob/rules-orders-code-reviewer/`. Pinned output shape, domain-specific concerns (audit logging, `@Transactional`, money comparisons, PII in logs).
 
@@ -45,23 +44,30 @@ You'll pull the ticket down with the Jira MCP server you configured this morning
 
 ### What you'll reuse from the repo
 
-- **The `software-security-reviewer` mode** in `.bob/custom_modes.yaml`, with its rules in `.bob/rules-software-security-reviewer/` — same security review used elsewhere in this repo, applied here pre-merge instead of in CI.
-- **The pre-existing `OrderService.java`** has its own pile of issues (hardcoded API key, MD5, `java.util.Random`, `printStackTrace`). Your diff only touches part of that file; the security lap surfaces the rest as follow-up tickets.
+- **The `software-security-reviewer` mode** — a pre-built security review mode shipped with this lab at `labs/app/lab1/software-security-reviewer.yaml`. You'll install it into Bob before running the third review lap in Part 5.
 
 ---
 
 ## Before you start
 
-- [ ] You're on a working branch, not `main` (e.g. `lab1-refunds`)
 - [ ] `gh auth status` shows you're logged into GitHub
 - [ ] `mvn test` passes from `order-service/`
 - [ ] You have the **ticket key** from the refund ticket you created in the morning intro lab (the one Jira assigned when Bob created it — e.g. `OS-7`, `REF-12`, etc.). If you didn't write it down, jump back to Settings → MCP → atlassian, switch to Advanced mode, and ask: `Use jira_search to find the refund ticket I created earlier.`
 
 ---
 
-## Part 1 — Capture your team's standards as Bob rules
+## Part 1 — Branch off main and capture team standards as Bob rules
 
-Real teams have coding standards that aren't fully expressible in a linter — "don't log customer names," "every status transition emits an audit log," "money is always `BigDecimal`." A Bob rules file makes those standards visible to every mode that runs in the workspace, including `/review` and the commit-message generator. You write them once, every reviewer reads them.
+**Create your branch.** Start clean off `main` so your refund work is isolated and reviewable. From a terminal at the repo root:
+
+```bash
+git checkout main
+git pull
+git checkout -b lab1-refunds
+git push -u origin lab1-refunds
+```
+
+**Capture your team's standards.** Real teams have coding standards that aren't fully expressible in a linter — "don't log customer names," "every status transition emits an audit log," "money is always `BigDecimal`." A Bob rules file makes those standards visible to every mode that runs in the workspace, including `/review` and the commit-message generator. You write them once, every reviewer reads them.
 
 Create `.bob/rules/coding-standards.md`:
 
@@ -99,25 +105,39 @@ These rules apply everywhere Bob runs in this workspace. You don't have to resta
 
 ---
 
-## Part 2 — Pull the ticket from Jira and build the feature
+## Part 2 — Pull the ticket, move it In Progress, build the feature
 
-Remember the refund ticket you created in the morning intro lab? Time to pull it down and implement it.
+Remember the refund ticket you created in the morning intro lab? Time to pull it down, mark it In Progress, and implement it.
 
-Switch to **🤖 Advanced** mode (so MCP tools are available), start a new task, and paste — replacing `<your-ticket-key>` with the actual key Jira assigned to your refund ticket:
+**Fetch the ticket.** Switch to **🤖 Advanced** mode (so MCP tools are available), start a new task, and paste — replacing `<your-ticket-key>` with the actual key Jira assigned:
 
 ```
-Use jira_get_issue to fetch <your-ticket-key>. Then switch to Code mode and implement the feature described in the acceptance criteria. Update the Order model, OrderService, OrderController, and add tests.
+Use jira_get_issue to fetch <your-ticket-key>. Read me the acceptance criteria.
 ```
 
-Bob calls `jira_get_issue` on the Atlassian MCP server, reads the description and acceptance criteria back, then proposes the switch to **💻 Code** mode and delivers the feature against the ticket. Approve the mode switch when prompted.
+Bob calls `jira_get_issue` on the Atlassian MCP server and reads the description back.
 
-When Bob finishes:
+**Move the ticket to In Progress.** Before writing code, mark the ticket as work-in-progress — same thing you'd do manually at the start of any sprint task. In the same task, paste:
 
-```bash
-cd order-service && mvn test
+```
+Move <your-ticket-key> to "In Progress" status.
 ```
 
-The build should pass. **Don't commit yet.** The interesting part of this lab is what the spec didn't ask for — audit logging, idempotency on retries, authorization, validation that the refund amount doesn't exceed the original — and what each review lap catches. Real Jira tickets don't spell these out; that's what code review is for.
+Bob picks the Jira transition tool. Because that tool isn't in your `alwaysAllow` list, Bob asks for approval before calling it — approve it once.
+
+Now **open your Jira board in the browser** and confirm the ticket is sitting in the **In Progress** column. Take a moment to look — this is the IDE-to-tracker loop closing in real time, no manual click-through required.
+
+**Build the feature.** Back in Bob, hand off to Code mode:
+
+```
+Switch to Code mode and implement the feature described in the ticket. Update the Order model, OrderService, OrderController, and add tests.
+```
+
+Bob proposes the mode switch; approve it and let it deliver the feature against the ticket's acceptance criteria.
+
+Bob should automatically run tests, but if it doesn't just tell Bob to test.
+
+**Don't commit yet.** The interesting part of this lab is what the spec didn't ask for — audit logging, idempotency on retries, authorization, validation that the refund amount doesn't exceed the original — and what each review lap catches. Real Jira tickets don't spell these out; that's what code review is for.
 
 ---
 
@@ -176,106 +196,88 @@ In a new task, switch to **Orders Code Reviewer** and paste:
 Review the uncommitted refund changes against our standards.
 ```
 
-This pass should surface things `/review` glossed over — missing audit log on the refund, no `@Transactional`, a `customerName` in a log line, no idempotency guard, no validation that refund amount ≤ original order amount. Apply the fixes you agree with (in Code mode — Orders Code Reviewer is read-only).
+This pass could surface things `/review` glossed over — missing audit log on the refund, no `@Transactional`, a `customerName` in a log line, no idempotency guard, no validation that refund amount ≤ original order amount. Apply the fixes you agree with (in Code mode — Orders Code Reviewer is read-only).
 
 ---
 
 ## Part 5 — Pre-commit gauntlet, lap 3: security review
 
-The first two laps covered standards and quality. The third lap is about exploitable risk. The repo already includes a **🛡️🔐 Software Security Reviewer** mode (in `.bob/custom_modes.yaml`, rules in `.bob/rules-software-security-reviewer/`). Reuse it.
+The first two laps covered standards and quality. The third lap is about exploitable risk. This directory has a file called `software-security-reviewer.yaml` representing a mode.
+
+Lets import that Mode into Bob. 
+
+1. In your Bob chat window, click the setting cog at the top. 
+2. Click Modes on the left side.
+3. Find the small import button.
+4. Select the file `software-security-reviewer.yaml` from your local filesystem.
+5. Restart Bob IDE to ensure the new mode appears.
 
 In a new task, switch to **Software Security Reviewer** and paste:
 
 ```
-Review the uncommitted changes plus any pre-existing code in OrderService.java the diff context touches. Focus on:
+Review the uncommitted refund changes. Focus on:
 - Money-movement endpoints without authorization
 - PII / cardholder data exposure in logs or error responses
 - Weak cryptography (MD5, SHA-1, java.util.Random for security-sensitive values)
-- Hardcoded secrets in surrounding code
+- Hardcoded secrets, URLs, or thresholds
 
 Output the standard CRITICAL / HIGH / MEDIUM / LOW findings with code patches. Save the result to bob-security-review.md.
 ```
 
-This lap widens the lens beyond your diff. The pre-existing `OrderService.java` has hardcoded `LEGACY_API_KEY` and `BACKUP_DB_PASSWORD`, MD5 in `generateOrderVerificationCode()`, `Random` in `generateTrackingNumber()`, and `printStackTrace()` in two catch blocks. The security mode finds them all and proposes patches.
+The security mode applies a different lens than laps 1 and 2 — same diff, but graded on exploitability rather than style or domain correctness. Save the markdown; you'll post it on the PR in Part 7.
 
-You don't have to fix every pre-existing issue in this PR — but you now have a saved review markdown to file as follow-up tickets, and you'll post it on the PR in Part 7 so reviewers see the full picture.
+---
+## Part 6 — Optional: Advanced Code Review Challenges
+
+If you have completed the lab and want to explore different code review workflows and Bob capabilities, here are some ideas:
+
+### Challenge 1: Create a Git Commit Message Writer Mode
+1. Use Mode Writer to create a `commit-message-writer` mode
+2. Configure it to read `.bob/rules/coding-standards.md` for commit format requirements
+3. Have it analyze uncommitted changes and generate conventional commit messages
+4. Include Jira ticket reference, type (feat/fix/refactor), and meaningful body text
+5. Test it by asking: "Generate a commit message for my refund changes"
+
+### Challenge 2: Create a Unit Test Writer Mode
+1. Design a `test-writer` mode specialized in JUnit 5 and Mockito
+2. Configure it to follow your team's test naming conventions
+3. Have it identify untested edge cases and generate parameterized tests
+4. Test on the refund endpoint: "Write tests for all failure scenarios"
+
+### Challenge 3: Create a Test-and-Commit Orchestrator Mode
+1. Build a `test-and-commit-orchestrator` mode that coordinates multiple workflows
+2. Configure it to use the `test-writer` mode to run tests
+3. If tests pass, use the `commit-message-writer` mode to generate a commit message
+4. Have it execute the commit with the generated message
+5. Test by asking: "Run the tests and commit when tests pass"
+6. Bonus: Add rollback logic if tests fail after code changes
+
+### Challenge 4: Automate Review Findings Export
+1. Use Bob to parse the Bob Findings panel and export to JSON
+2. Create a script that posts findings as GitHub PR review comments
+3. Use the `gh` CLI to add inline comments at specific file:line locations
+4. Bonus: Add labels to the PR based on finding severity (needs-security-review, has-blockers)
+
+### Challenge 6: Create a Pre-Commit Hook Integration
+1. Write a Git pre-commit hook that runs `/review` automatically
+2. Block commits if BLOCKER findings exist
+3. Save review results to `.bob/review-history/` with timestamps
+4. Add a bypass flag for emergencies: `git commit --no-verify`
+
+### Challenge 7: Implement Review Ratcheting
+1. Establish a baseline: run all three review modes and save finding counts
+2. Create a script that fails CI if new findings exceed the baseline
+3. Use Bob to categorize findings as "new" vs "existing technical debt"
+4. Gradually lower the baseline threshold as you fix existing issues
 
 ---
 
-## Part 6 — Commit with a Bob-generated message
-
-Stage what you accepted from the three laps:
-
-```bash
-git add order-service/ .bob/
-```
-
-In the **Source Control** panel, click the **sparkle icon** next to the commit message box. Bob reads the staged diff, your branch name, and `.bob/rules/coding-standards.md` — including the commit message convention you wrote in Part 1.
-
-Expected first suggestion (something like):
-
-```
-feat(orders): [<your-ticket-key>] add refund endpoint with audit logging
-
-- POST /api/orders/{id}/refund issues a refund and transitions the order to REFUNDED
-- Validates refund amount against original order total
-- Emits audit log entry on every refund
-- Adds tests for happy path, already-refunded, and over-refund cases
-```
-
-If the first one misses something, click the sparkle again for an alternative. Edit by hand to add specifics. Then commit and push:
-
-```bash
-git push -u origin lab1-refunds
-```
-
----
-
-## Part 7 — Open the PR and post the security review
-
-In a new task in any mode, type:
-
-```
-/create-pr
-```
-
-Bob asks you to confirm the base branch (pick `main`), generates a PR title and description from the commit history and diff, and applies your project's PR template if one exists at `.github/pull_request_template.md`. Confirm and Bob creates the PR via `gh`, returning the link in chat.
-
-Now post the security review as an inline PR comment so reviewers see the full risk picture, not just the diff. Grab the PR number:
-
-```bash
-gh pr view --json number -q .number
-```
-
-Then post `bob-security-review.md` (saved in Part 5) as a comment:
-
-```bash
-gh pr comment <PR-number> --body-file bob-security-review.md
-```
-
-The PR now carries:
-
-- **What changed** — the description Bob generated from the diff and commits (`/create-pr`)
-- **How risky it is** — the security review markdown posted as a comment (Part 5 + `gh pr comment`)
-- **Which standards it follows** — the commit message convention enforced by `.bob/rules/coding-standards.md` (Part 6)
-
-That's a complete pre-merge review record, produced by one slash command, one custom mode you built, and one mode the repo provided. The same `bob-security-review.md` doubles as a wiki-ready artifact — drop it into your team wiki and it's already formatted.
-
----
 
 ## Stuck?
 
-- **`/review` says "no changes detected".** It reviews uncommitted changes by default. If you committed early, run `/review main` to compare your branch against `main` instead.
-
 - **The `orders-code-reviewer` mode doesn't appear in the dropdown.** Custom modes load at IDE startup. Restart Bob IDE. Confirm the mode exists: `grep "orders-code-reviewer" .bob/custom_modes.yaml`.
 
-- **Commit message generator doesn't include the Jira ticket prefix.** The rule in `.bob/rules/coding-standards.md` may be too vague. Open it and make the format explicit: `<type>(orders): [ORD-XXXX] <description>`. Click the sparkle again — Bob re-reads the rules every time.
-
 - **The custom mode produces a wall of text instead of structured findings.** The rules in `.bob/rules-orders-code-reviewer/` aren't constraining output enough. Re-open Mode Writer and tighten — explicit BLOCKER/MAJOR/MINOR sections, file:line citation required, one-line verdict at the end.
-
-- **`gh pr comment` fails with "must specify --body or --body-file".** The security review markdown wasn't saved. Re-run the Part 5 prompt with an explicit instruction to write the output to `bob-security-review.md`, then verify with `ls -lh bob-security-review.md`.
-
-- **`/create-pr` fails with auth errors.** Run `gh auth status` to confirm you're logged in. If not, `gh auth login` and try again.
 
 - **You want to start over.** The lab makes only additive changes. Reset with `git checkout -- order-service/ .bob/ && rm -f .bob/rules/coding-standards.md bob-security-review.md && rm -rf .bob/rules-orders-code-reviewer/`. The `orders-code-reviewer` mode entry will still be in `.bob/custom_modes.yaml` — remove it by hand or with another Mode Writer prompt.
 

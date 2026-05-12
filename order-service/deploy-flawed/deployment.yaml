@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+  labels:
+    app: order-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: order-service
+  template:
+    metadata:
+      labels:
+        app: order-service
+    spec:
+      containers:
+        - name: order-service
+          image: quay.io/example/order-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: prod
+            - name: DB_HOST
+              value: order-db
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: orders
+            - name: DB_USER
+              value: orderuser
+            - name: DB_PASS
+              value: orderpass
+          securityContext:
+            allowPrivilegeEscalation: true
+
+# Made with Bob

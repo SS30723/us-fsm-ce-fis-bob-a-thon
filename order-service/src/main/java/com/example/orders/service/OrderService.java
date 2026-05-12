@@ -57,6 +57,36 @@ public class OrderService {
     }
 
     private void validateStatusTransition(String currentStatus, String newStatus) {
-        // Allow all transitions
+        // Terminal statuses cannot be changed
+        if ("DELIVERED".equals(currentStatus) || "CANCELLED".equals(currentStatus)) {
+            throw new IllegalStateException("Cannot transition from terminal status: " + currentStatus);
+        }
+        
+        // CANCELLED can be set from any non-terminal status
+        if ("CANCELLED".equals(newStatus)) {
+            return;
+        }
+        
+        // Define valid status transitions
+        // PENDING -> CONFIRMED -> SHIPPED -> DELIVERED
+        switch (currentStatus) {
+            case "PENDING":
+                if (!"CONFIRMED".equals(newStatus)) {
+                    throw new IllegalStateException("Cannot transition from PENDING to " + newStatus);
+                }
+                break;
+            case "CONFIRMED":
+                if (!"SHIPPED".equals(newStatus)) {
+                    throw new IllegalStateException("Cannot transition from CONFIRMED to " + newStatus);
+                }
+                break;
+            case "SHIPPED":
+                if (!"DELIVERED".equals(newStatus)) {
+                    throw new IllegalStateException("Cannot transition from SHIPPED to " + newStatus);
+                }
+                break;
+            default:
+                throw new IllegalStateException("Unknown status: " + currentStatus);
+        }
     }
 }

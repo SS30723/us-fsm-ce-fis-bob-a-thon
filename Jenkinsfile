@@ -44,6 +44,16 @@ spec:
     env:
     - name: HOME
       value: /workspace
+  - name: lint-tools
+    image: image-registry.openshift-image-registry.svc:5000/jenkins/lint-tools:latest
+    command: ['sleep', 'infinity']
+    workingDir: /workspace
+    volumeMounts:
+    - name: workspace-volume
+      mountPath: /workspace
+    env:
+    - name: HOME
+      value: /workspace
   - name: bob
     image: image-registry.openshift-image-registry.svc:5000/jenkins/bob-cli:latest
     command: ['sleep', 'infinity']
@@ -105,6 +115,7 @@ spec:
         //    Add a DCR generation stage; Bob pushes the result to
         //    Jira via the Jira MCP server.
         //    See labs/LAB5_DCR_REPORTING.md.
+        
     }
 
     post {

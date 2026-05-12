@@ -1,5 +1,7 @@
 FROM eclipse-temurin:17-jre-alpine
 
+MAINTAINER your-name@example.com
+
 WORKDIR /app
 
 COPY target/order-service-1.0.0.jar app.jar
