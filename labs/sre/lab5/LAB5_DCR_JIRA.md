@@ -79,10 +79,16 @@ Output:
      Create exactly once. If Jira is unreachable or the call fails, log clearly and continue — the markdown is the source of truth.
   3. Return the DCR markdown plus a one-line "created KAN-N" or "Jira create failed: ..." status so the pipeline stage can echo and archive it.
 
+Hard rules for the Jira call (do NOT deviate from these):
+  - Call `jira_create_issue` directly by name. Bob exposes MCP tools as native tools — there is no `use_mcp_tool` wrapper. Do not instruct Bob to invoke any meta-tool or pass `server_name` / `tool_name` arguments. Reference the tool by its name only.
+  - Describe the call's fields in prose only (project, summary, description, issue type, labels). Do NOT hardcode a JSON arguments object in the mode. `mcp-atlassian`'s parameter names have shifted across versions (`project` vs `project_key`, `issuetype` vs `issue_type`); the live tool schema is the source of truth and Bob will resolve the correct field names at call time.
+
 Tool groups:
   - read
   - mcp
 ```
+
+> **Why this mode is more constrained than the modes in previous labs.** This is the first mode in the workshop that calls an external system through an MCP server, and it has to get the tool call right on the first try. The pipeline runs unattended in a Jenkins pod — there's no one to answer a clarification prompt or approve an interactive tool call — so a malformed call surfaces as a hard failure.
 
 The title and label format is a hard contract — Part 7 (if you do it) uses the per-branch label to find prior tickets.
 
