@@ -88,7 +88,7 @@ Tool groups:
   - mcp
 ```
 
-> **Why this mode is more constrained than the modes in previous labs.** This is the first mode in the workshop that calls an external system through an MCP server, and it has to get the tool call right on the first try. The pipeline runs unattended in a Jenkins pod — there's no one to answer a clarification prompt or approve an interactive tool call — so a malformed call surfaces as a hard failure, often with a misleading error message (the most common one is `Jira client is not configured or available`, which makes it look like a credentials problem when the real cause is a wrong tool-call shape that took the MCP server down a bad init path). The earlier pipeline modes only read files and wrote summaries; this one has to interoperate with someone else's API on the first attempt. That's why we pin the call convention explicitly rather than trusting the model to infer it.
+> **Why this mode is more constrained than the modes in previous labs.** This is the first mode in the workshop that calls an external system through an MCP server, and it has to get the tool call right on the first try. The pipeline runs unattended in a Jenkins pod — there's no one to answer a clarification prompt or approve an interactive tool call — so a malformed call surfaces as a hard failure.
 
 The title and label format is a hard contract — Part 7 (if you do it) uses the per-branch label to find prior tickets.
 
