@@ -6,11 +6,11 @@
 controller:
   resources:
     requests:
-      cpu: 500m
-      memory: 2Gi
+      cpu: 750m
+      memory: 2560Mi
     limits:
-      cpu: "2"
-      memory: 4Gi
+      cpu: "3"
+      memory: 6Gi
   admin:
     username: admin
   installPlugins:
@@ -88,6 +88,6 @@ controller:
       }
 persistence:
   enabled: true
-  size: 20Gi
+  size: 40Gi
 
 
