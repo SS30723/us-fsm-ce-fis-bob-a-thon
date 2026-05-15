@@ -248,7 +248,7 @@ Your pipeline currently creates a **new** Jira ticket on every push. That's fine
 You already have everything you need to make this work — the per-branch label (`user1-labs`) the mode applies on create is a stable handle for finding the prior ticket. The work is in two places:
 
 1. **Expand `alwaysAllow` in `.bob/mcp.json`** to include `jira_search` (find prior tickets by label) and `jira_add_comment` (post the new DCR onto the existing ticket).
-2. **Refine the mode's rules** so its Jira flow becomes:
+2. **Refine the mode's rules** using **Mode Writer** mode so its Jira flow becomes:
    - First call `jira_search` with a JQL query like `project = ${JIRA_PROJECT} AND labels = "<BRANCH>" AND labels = "bob-dcr" ORDER BY created DESC`
    - If the search returns one or more tickets, use `jira_add_comment` on the most recent one with the new DCR (or a digest of it — long comments get unwieldy on a real ticket)
    - If the search returns nothing, fall back to the create flow you already have
