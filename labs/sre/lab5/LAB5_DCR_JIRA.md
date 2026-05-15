@@ -88,7 +88,10 @@ Tool groups:
   - mcp
 ```
 
+
 > **Why this mode is more constrained than the modes in previous labs.** This is the first mode in the workshop that calls an external system through an MCP server, and it has to get the tool call right on the first try. The pipeline runs unattended in a Jenkins pod — there's no one to answer a clarification prompt or approve an interactive tool call — so a malformed call surfaces as a hard failure.
+
+Submit the prompt to Bob.
 
 The title and label format is a hard contract — Part 7 (if you do it) uses the per-branch label to find prior tickets.
 
@@ -121,7 +124,9 @@ Watch Bob:
 3. Call `jira_create_issue` against your own Jira instance
 4. Report back the ticket key
 
-Open the ticket in your own Jira's web UI. Read the description. Check the labels. Decide if it's good.
+If Bob fails any MCP tool calls during this step, call over an instructor. This means we need to provide more explicit instructions to Bob about how to call the MCP tools in the mode. Since this will be running on the pipeline, any need for human interaction will be skipped over by Bob. 
+
+Open your own JIRA board to view the ticket. Read the description. Check the labels. Decide if it's you are happy with it.
 
 ---
 
@@ -145,21 +150,28 @@ This is the agentic-development loop: write the mode, run it, observe drift, tig
 
 ## Part 4 — Swap `.bob/mcp.json` to the cluster-friendly form
 
-Now that your mode is validated, replace the bash-launcher `atlassian` entry with the form that works in the Jenkins pod. The bash launcher works fine in your local IDE because `.env` sits next to the repo on your machine; it does **not** work in the pipeline pod — there's no `.env` file inside the `bob-cli` container, and we don't want one. Secrets in CI come from Kubernetes.
+Now that your mode is validated in the IDE, we are going to add a new JIRA MCP declaration that Bob can use on the pipeline. Rename your existing `atlassian` MCP server to `atlassianIDE`, then add the new declaration below. The bash launcher works fine in your local IDE because `.env` sits next to the repo on your machine; it does **not** work in the pipeline pod — there's no `.env` file inside the `bob-cli` container, and we don't want one. Secrets in CI come from Kubernetes.
 
-Open `.bob/mcp.json` and replace your existing `atlassian` entry with this:
+Open `.bob/mcp.json` and append the new `atlassian` entry, your `mcp.json` should look like this:
 
 ```json
-"atlassian": {
-  "command": "uvx",
-  "args": ["mcp-atlassian"],
-  "env": {
-    "JIRA_URL": "${JIRA_URL}",
-    "JIRA_USERNAME": "${JIRA_USERNAME}",
-    "JIRA_API_TOKEN": "${JIRA_API_TOKEN}"
+{
+  "mcpServers": {
+  "atlassianIDE": {
+    ...
   },
-  "disabled": false,
-  "alwaysAllow": ["jira_get_issue", "jira_search", "jira_add_comment", "jira_create_issue"]
+  "atlassian": {
+    "command": "uvx",
+    "args": ["mcp-atlassian"],
+    "env": {
+      "JIRA_URL": "${JIRA_URL}",
+      "JIRA_USERNAME": "${JIRA_USERNAME}",
+      "JIRA_API_TOKEN": "${JIRA_API_TOKEN}"
+    },
+    "disabled": false,
+    "alwaysAllow": ["jira_get_issue", "jira_search", "jira_add_comment", "jira_create_issue"]
+    }
+  }
 }
 ```
 
@@ -181,7 +193,7 @@ After saving `.bob/mcp.json`, restart the `atlassian` MCP server so Bob picks up
 
 ## Part 5 — Add the `DCR` stage to your Jenkinsfile
 
-Start a new task and switch to the **Jenkins Bob Integration** mode (same one you used in Labs 1 and 2). Paste the following prompt:
+Start a new task and switch to the **Jenkins Pipeline Integration** mode (same one you used in Labs 1 and 2). Paste the following prompt:
 
 ```
 Add a "DCR" stage to @Jenkinsfile right after the Unit Tests stage. It should be the last stage before the global post block. The stage should:
@@ -201,7 +213,7 @@ Add a "DCR" stage to @Jenkinsfile right after the Unit Tests stage. It should be
 Before staging anything, delete the dogfood artifacts you created in Part 2. They share names with files the pipeline writes at runtime and should never live on a branch:
 
 ```bash
-rm -f dcr-commits.txt dcr-diffstat.txt dcr-context.txt deployment-change-request.md
+rm -f dcr-commits.txt dcr-diffstat.txt dcr-context.txt
 ```
 
 Run `git status` and confirm the only modified/new files are the ones you actually meant to change (`Jenkinsfile`, `.bob/mcp.json`, `.bob/custom_modes.yaml`, possibly a `.bob/rules-pipeline-dcr-jira-reporter/` directory).
