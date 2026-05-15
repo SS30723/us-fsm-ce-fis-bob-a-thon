@@ -536,7 +536,7 @@ Instead of asking "Add security scanning," provide a complete technical specific
 
 **Result:** Production-ready code in minutes, not hours of manual coding and testing.
 
-#### Prompt to Bob:
+
 
 **Prompt to Bob:**
 ```
@@ -860,10 +860,17 @@ In Jenkins, click **Build Now** on your pipeline and watch the console.
   - Configuration security checks validate K8s/Docker configs
   - Risk assessment calculates overall security posture
 - Security reports are generated and archived as build artifacts:
-  - `Security_Analysis_Report.md` - Bob's comprehensive security analysis
-  - `SonarQube_Analysis_Report.md` - SonarQube findings
-  - `CVE_ANALYSIS_REPORT.md` - CVE analysis (if vulnerabilities detected)
-  - `SECURITY_REPORT.txt` - Pipeline security summary
+  - `security-analysis-report.md` - Consolidated security analysis report
+  - `bob-cve-analysis.txt` - Bob's CVE analysis (if vulnerabilities detected)
+  - `order-service/grype-report.json` - Raw Grype vulnerability scan results
+  
+  > **Note:** In an ideal production environment, you would generate separate reports for each tool (SonarQube_Analysis_Report.md, CVE_ANALYSIS_REPORT.md, SECURITY_REPORT.txt). However, for demo purposes, this lab consolidates all findings into a single `security-analysis-report.md` that includes:
+  > - Executive summary with risk level and deployment decision
+  > - SonarQube analysis results (bugs, vulnerabilities, security hotspots, code smells)
+  > - Grype vulnerability scan results (Critical, High, Medium severity counts)
+  > - Risk assessment calculation and thresholds
+  > - Deployment recommendation (BLOCK/WARN/PROCEED)
+  > - Next steps based on risk level
 - Pipeline may turn **UNSTABLE (yellow)** or **FAILURE (red)** depending on severity of findings
 - Build page lists all security reports under **Build Artifacts**
 
@@ -879,7 +886,7 @@ For detailed pipeline execution and troubleshooting, refer to `labs/sre/lab3/PIP
 **Recommended workflow after finishing this lab:**
 ```bash
 # Commit the lab outputs
-git add Jenkinsfile Security_Analysis_Report.md SonarQube_Analysis_Report.md pipeline/cve-analysis-prompt.txt
+git add Jenkinsfile security-analysis-report.md bob-cve-analysis.txt order-service/grype-report.json
 git commit -m "lab: add comprehensive security analysis"
 
 # Push changes so Jenkins can build the updated pipeline
