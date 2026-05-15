@@ -18,8 +18,20 @@ A student reports their `DCR` stage fails on the Jira call. Map their job name t
 
 | User | Secret |
 |---|---|
-| user1..user14 | jira-creds-a..n (1:1) |
-| user15..user20 | jira-creds-n |
+| user1, user2 | jira-creds-a |
+| user3, user4 | jira-creds-b |
+| user5, user6 | jira-creds-c |
+| user7, user8 | jira-creds-d |
+| user9, user10 | jira-creds-e |
+| user11, user12 | jira-creds-f |
+| user13, user14 | jira-creds-g |
+| user15, user16 | jira-creds-h |
+| user17, user18 | jira-creds-i |
+| user19, user20 | jira-creds-j |
+| user21, user22 | jira-creds-k |
+| user23, user24 | jira-creds-l |
+| user25, user26 | jira-creds-m |
+| user27, user28, **and** user29..user40 | jira-creds-n |
 
 Verify the secret's credentials directly:
 

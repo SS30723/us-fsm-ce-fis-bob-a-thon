@@ -19,8 +19,10 @@
 // jira-creds-{a..n} secret to mount based on the user number parsed
 // from its job name. See setup/JIRA_ACCOUNT_SETUP.md Section 3.3.
 //
-// user1..user14 map 1:1 to creds a..n. user15+ all share user14's
-// instance (jira-creds-n) — we only provisioned 14 Jira accounts.
+// Users are paired across 14 Jira accounts:
+//   user1/2 -> jira-creds-a, user3/4 -> jira-creds-b, ...,
+//   user27/28 -> jira-creds-n. user29+ share user28's instance
+//   (jira-creds-n) — we only provisioned 14 Jira accounts.
 //
 // @NonCPS keeps the regex Matcher object inside this method so it never
 // becomes a CPS-serialized local variable (Matcher is not Serializable
@@ -30,9 +32,10 @@ def routeJiraSecret(String jobName) {
     def m = jobName =~ /user0*(\d+)/
     if (!m) return 'jira-creds-n'
     int userNum = m[0][1].toInteger()
+    if (userNum < 1) return 'jira-creds-n'
     def letters = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n']
-    if (userNum >= 1 && userNum <= 14) return "jira-creds-${letters[userNum - 1]}"
-    return 'jira-creds-n'
+    int letterIdx = Math.min((userNum - 1).intdiv(2), 13)
+    return "jira-creds-${letters[letterIdx]}"
 }
 
 def jiraSecret = routeJiraSecret(env.JOB_NAME ?: '')

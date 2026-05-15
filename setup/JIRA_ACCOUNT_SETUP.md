@@ -1,6 +1,6 @@
 # Jira Account Setup — Bob-a-thon Workshop
 
-Setup steps for the 14 Jira instances Lab 5 needs. One instance per student for user1–user14; user15–user20 share user14's instance.
+Setup steps for the 14 Jira instances Lab 5 needs. Users are paired across the 14 instances (user1/2 share `jira-creds-a`, user3/4 share `jira-creds-b`, …, user27/28 share `jira-creds-n`). user29–user40 share user28's instance (`jira-creds-n`).
 
 ## Table of Contents
 
@@ -27,20 +27,20 @@ Setup steps for the 14 Jira instances Lab 5 needs. One instance per student for 
 
 | Secret | Student(s) |
 |---|---|
-| `jira-creds-a` | user1 |
-| `jira-creds-b` | user2 |
-| `jira-creds-c` | user3 |
-| `jira-creds-d` | user4 |
-| `jira-creds-e` | user5 |
-| `jira-creds-f` | user6 |
-| `jira-creds-g` | user7 |
-| `jira-creds-h` | user8 |
-| `jira-creds-i` | user9 |
-| `jira-creds-j` | user10 |
-| `jira-creds-k` | user11 |
-| `jira-creds-l` | user12 |
-| `jira-creds-m` | user13 |
-| `jira-creds-n` | user14 **and** user15–user20 (shared fallback) |
+| `jira-creds-a` | user1, user2 |
+| `jira-creds-b` | user3, user4 |
+| `jira-creds-c` | user5, user6 |
+| `jira-creds-d` | user7, user8 |
+| `jira-creds-e` | user9, user10 |
+| `jira-creds-f` | user11, user12 |
+| `jira-creds-g` | user13, user14 |
+| `jira-creds-h` | user15, user16 |
+| `jira-creds-i` | user17, user18 |
+| `jira-creds-j` | user19, user20 |
+| `jira-creds-k` | user21, user22 |
+| `jira-creds-l` | user23, user24 |
+| `jira-creds-m` | user25, user26 |
+| `jira-creds-n` | user27, user28 **and** user29–user40 (shared fallback) |
 
 Each instance uses project key `KAN` — Atlassian's default for any Space/project created from the Kanban template. Keys are scoped per-site, so `KAN` on one site is independent of `KAN` on another. No collision.
 
@@ -175,15 +175,18 @@ def routeJiraSecret(String jobName) {
     def m = jobName =~ /user0*(\d+)/
     if (!m) return 'jira-creds-n'
     int userNum = m[0][1].toInteger()
+    if (userNum < 1) return 'jira-creds-n'
     def letters = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n']
-    if (userNum >= 1 && userNum <= 14) return "jira-creds-${letters[userNum - 1]}"
-    return 'jira-creds-n'
+    int letterIdx = Math.min((userNum - 1).intdiv(2), 13)
+    return "jira-creds-${letters[letterIdx]}"
 }
 
 def jiraSecret = routeJiraSecret(env.JOB_NAME ?: '')
 ```
 
-Pulls the numeric portion of the username from the job name (`user1`, `user01`, `user015` all parse to integers) and indexes into the secret-letter list. user1–user14 get their own dedicated secret; anything outside that range (including parse failures) falls through to `jira-creds-n` — the same instance user14 uses.
+Pulls the numeric portion of the username from the job name (`user1`, `user01`, `user015` all parse to integers) and pairs each user into one of 14 secrets: user1/2 → `jira-creds-a`, user3/4 → `jira-creds-b`, …, user27/28 → `jira-creds-n`. Anything outside that range (user29+, or parse failures) falls through to `jira-creds-n` — the same instance user28 uses.
+
+`.intdiv(2)` is Groovy's integer division (`/` between ints returns a `BigDecimal`, which the array index would reject). The `Math.min(..., 13)` cap handles users above 28 without needing a separate branch.
 
 `@NonCPS` is required: Groovy's regex `Matcher` object isn't `Serializable`, and Jenkins' CPS engine serializes all local pipeline variables across checkpoints. Wrapping the regex work in a `@NonCPS` method keeps the Matcher contained — it never becomes a top-level pipeline variable, so the serializer never sees it.
 
@@ -226,24 +229,24 @@ Agent pods are dynamic — no Jenkins or OpenShift restart needed. The next buil
 
 ## 4. Student → instance mapping
 
-| Student | Secret | Site URL to share |
+| Students | Secret | Site URL to share |
 |---|---|---|
-| user1 | `jira-creds-a` | URL from the secret |
-| user2 | `jira-creds-b` | URL from the secret |
-| user3 | `jira-creds-c` | URL from the secret |
-| user4 | `jira-creds-d` | URL from the secret |
-| user5 | `jira-creds-e` | URL from the secret |
-| user6 | `jira-creds-f` | URL from the secret |
-| user7 | `jira-creds-g` | URL from the secret |
-| user8 | `jira-creds-h` | URL from the secret |
-| user9 | `jira-creds-i` | URL from the secret |
-| user10 | `jira-creds-j` | URL from the secret |
-| user11 | `jira-creds-k` | URL from the secret |
-| user12 | `jira-creds-l` | URL from the secret |
-| user13 | `jira-creds-m` | URL from the secret |
-| user14–user20 | `jira-creds-n` | URL from the secret (shared) |
+| user1, user2 | `jira-creds-a` | URL from the secret |
+| user3, user4 | `jira-creds-b` | URL from the secret |
+| user5, user6 | `jira-creds-c` | URL from the secret |
+| user7, user8 | `jira-creds-d` | URL from the secret |
+| user9, user10 | `jira-creds-e` | URL from the secret |
+| user11, user12 | `jira-creds-f` | URL from the secret |
+| user13, user14 | `jira-creds-g` | URL from the secret |
+| user15, user16 | `jira-creds-h` | URL from the secret |
+| user17, user18 | `jira-creds-i` | URL from the secret |
+| user19, user20 | `jira-creds-j` | URL from the secret |
+| user21, user22 | `jira-creds-k` | URL from the secret |
+| user23, user24 | `jira-creds-l` | URL from the secret |
+| user25, user26 | `jira-creds-m` | URL from the secret |
+| user27, user28, **and** user29–user40 | `jira-creds-n` | URL from the secret (shared) |
 
-Each student gets their own Jira instance — except user15–user20, who share user14's. Within the shared instance, students filter the project board by their branch label (`user15-labs`, etc.) to find their own DCR tickets.
+Each pair of students shares a Jira instance — except user29–user40, who all share user27/28's. Within any shared instance, students filter the project board by their branch label (`user15-labs`, etc.) to find their own DCR tickets.
 
 ---
 
@@ -251,7 +254,7 @@ Each student gets their own Jira instance — except user15–user20, who share 
 
 Before workshop day, run one full pipeline against each instance:
 
-1. Spot-check a sample of usernames (at minimum user1, user14, and user15 to exercise the shared-instance fallback) and create branches `userNN-labs` on the workshop repo.
+1. Spot-check a sample of usernames (at minimum user1, user28, and user29 — covers the first pair, the last dedicated pair, and the shared-instance fallback) and create branches `userNN-labs` on the workshop repo.
 2. Configure the pipeline per `labs/sre/00_SETUP.md`.
 3. Walk the Jenkinsfile through Labs 1, 2, and 5.
 4. **Build Now.**
