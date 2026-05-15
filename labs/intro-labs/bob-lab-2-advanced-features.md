@@ -654,30 +654,44 @@ Custom modes configure Bob for specific workflows and tasks. They define:
 
 ### Creating Custom Modes
 
+Custom modes live in `.bob/custom_modes.yaml` (project-scoped) or `~/.bob/custom_modes.yaml` (global). The file holds a list under `customModes:` — each entry is one mode.
+
 **Basic Mode Structure:**
 
-```json
-{
-  "slug": "my-custom-mode",
-  "name": "My Custom Mode",
-  "roleDefinition": "You are a specialized assistant for [specific task]. Focus on [key areas].",
-  "whenToUse": "Use this mode when [specific scenarios].",
-  "groups": ["read", "edit", "execute"]
-}
+```yaml
+customModes:
+  - slug: my-custom-mode
+    name: My Custom Mode
+    roleDefinition: |
+      You are a specialized assistant for [specific task]. Focus on [key areas].
+    whenToUse: |
+      Use this mode when [specific scenarios].
+    groups:
+      - read
+      - edit
+      - command
 ```
+
+Valid `groups` values: `read`, `edit`, `command`, `browser`, `mcp`. (`command` is what gives the mode permission to run shell commands — there is no `execute` group.)
 
 **Advanced Mode with MCP:**
 
-```json
-{
-  "slug": "devops-mode",
-  "name": "DevOps Mode",
-  "roleDefinition": "You are a DevOps specialist. Help with deployments, monitoring, and infrastructure.",
-  "whenToUse": "Use for deployment, infrastructure, and operational tasks.",
-  "groups": ["read", "edit", "execute"],
-  "mcpServers": ["deployment-server", "monitoring-server"]
-}
+```yaml
+customModes:
+  - slug: devops-mode
+    name: 🚀 DevOps Mode
+    roleDefinition: |
+      You are a DevOps specialist. Help with deployments, monitoring, and infrastructure.
+    whenToUse: |
+      Use for deployment, infrastructure, and operational tasks.
+    groups:
+      - read
+      - edit
+      - command
+      - mcp
 ```
+
+To give a mode MCP access, include `mcp` in its `groups`. The MCP **servers themselves** (their command, args, env, `alwaysAllow` list, etc.) are declared separately in `.bob/mcp.json` — the same file you edited earlier in this lab. The mode just declares whether it's *allowed* to call MCP tools; which specific tools auto-approve vs. prompt for confirmation is governed by `alwaysAllow` in `.bob/mcp.json`.
 
 ### Managing Custom Modes
 
@@ -685,7 +699,7 @@ Custom modes configure Bob for specific workflows and tasks. They define:
 1. Open Bob Settings
 2. Navigate to **Modes**
 3. Click **Import Mode**
-4. Select your mode file (`.json`)
+4. Select your mode file (`.yaml`)
 5. The mode appears in Bob's mode selector
 
 **To remove a custom mode:**
@@ -695,10 +709,10 @@ Custom modes configure Bob for specific workflows and tasks. They define:
 4. Click the delete/trash icon
 5. Confirm deletion
 
-**Alternative - Manual management:**
-- Custom modes stored in: `~/.bob/modes/`
-- Delete the JSON file to remove a mode
-- Restart Bob after manual changes
+**Alternative — manual management:**
+- Custom modes are stored in `.bob/custom_modes.yaml` (project-scoped) or `~/.bob/custom_modes.yaml` (global).
+- Add a mode by appending a new entry under `customModes:`. Remove a mode by deleting its entry.
+- Bob picks up changes on the next mode-selector load — no IDE restart needed for project-scoped edits.
 
 > 📌 **Learn More:** [Custom Modes Documentation](https://bob.ibm.com/docs/ide/configuration/custom-modes)
 
