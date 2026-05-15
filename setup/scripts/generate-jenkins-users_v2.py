@@ -31,16 +31,22 @@ def generate(num_users: int, base_password: str) -> None:
     print("")
     print("def instance = Jenkins.getInstance()")
     print("def realm = instance.getSecurityRealm()")
+    print("def created = 0")
+    print("def skipped = 0")
     print("")
 
     for i in range(1, num_users + 1):
         username = f"{USER_PREFIX}{i}"
         password = f"{username}{base_password}"
-        print(f'realm.createAccount("{username}", "{password}")')
+        print(
+            f'if (hudson.model.User.getById("{username}", false) == null) {{ '
+            f'realm.createAccount("{username}", "{password}"); created++ '
+            f'}} else {{ skipped++ }}'
+        )
 
     print("")
     print("instance.save()")
-    print('println "Done — ' + str(num_users) + ' users created"')
+    print('println "Done — ${created} created, ${skipped} skipped (already existed)"')
 
 
 if __name__ == "__main__":

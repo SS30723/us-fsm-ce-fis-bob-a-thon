@@ -30,7 +30,7 @@
 
 ## 1. Deployment Overview
 
-This guide covers everything needed to set up the environment needed to run Jenkins for a bob-a-thon with 15–20 participants. This guide is written for an OpenShift cluster in IBM TechZone where:
+This guide covers everything needed to set up the environment needed to run Jenkins for a bob-a-thon with up to 40 participants. This guide is written for an OpenShift cluster in IBM TechZone where:
 
 - **ArgoCD manages the OAuth `cluster` resource** — adding a new identity provider via `oc patch oauth cluster` will be reverted on the next sync cycle. Workshop users must be added to the existing identity system through TechZone reservation.
 
@@ -74,7 +74,7 @@ OpenShift Cluster
 ├── user02-dev/
 │   └── ...
 │
-└── userXX-dev/  (×20 total)
+└── userXX-dev/  (×40 total)
 ```
 
 ### 1.3 Per-Build Agent Pod
@@ -112,7 +112,7 @@ Jenkins SA → edit role per userXX-dev namespace → oc start-build / oc rollou
 - `cluster-admin` access for the instructor account
 - Internal image registry enabled
 - Dynamic volume provisioning available (for Jenkins PVC)
-- Capacity: ~4 vCPU / 8 Gi baseline, plus up to 20 × agent pods at ~1 vCPU / 1 Gi each at peak
+- Capacity: ~4 vCPU / 8 Gi baseline, plus up to 40 × agent pods at ~1 vCPU / 1 Gi each at peak (real concurrency is rate-limited by the Kubernetes cloud's `containerCap`, default 10)
 
 ### 2.2 Instructor Tooling
 
@@ -235,10 +235,10 @@ Since JCasC is disabled to avoid startup issues, users are added using the Jenki
 1. Generate the user creation script:
 
     ```bash
-    uv run setup/scripts/generate-jenkins-users_v2.py 20 --password Workshop2024!
+    uv run setup/scripts/generate-jenkins-users_v2.py 40 --password Workshop2024!
     ```
 
-1. Logged in as `admin`, go to `https://<jenkins-route>/script`, paste the output from the above user creation script, and click **Run**. Verify the output shows `Done — 20 users created`.
+1. Logged in as `admin`, go to `https://<jenkins-route>/script`, paste the output from the above user creation script, and click **Run**. On a fresh install the output is `Done — 40 created, 0 skipped (already existed)`. The script is idempotent — re-running it after the initial install (e.g., to scale up) skips existing users and only creates the new ones.
 
 1. Next we set up each user to get their own folder, so that credentials stored inside a folder are only visible to jobs in that folder — users cannot see each other's GitHub PATs. We will switch the authorization strategy from `loggedInUsersCanDoAnything` to
 project-based matrix security, giving each user full control of only their own folder while blocking access to Manage Jenkins.
@@ -261,13 +261,22 @@ project-based matrix security, giving each user full control of only their own f
     instance.save()
 
     // Per-folder permissions
-    (1..20).each { i ->
+    (1..40).each { i ->
         def username = String.format("user%d", i)
 
         def folder = instance.getItem(username)
         if (!folder) {
             folder = instance.createProject(Folder, username)
             println "Created folder: ${username}"
+        }
+
+        // Drop any existing AuthorizationMatrixProperty so re-runs don't stack.
+        // Note: Folder doesn't have a top-level removeProperty(prop) method — use
+        // the underlying DescribableList's remove() instead.
+        new ArrayList(folder.getProperties()).each { p ->
+            if (p instanceof AuthorizationMatrixProperty) {
+                folder.getProperties().remove(p)
+            }
         }
 
         def prop = new AuthorizationMatrixProperty()
@@ -289,13 +298,13 @@ project-based matrix security, giving each user full control of only their own f
 
         folder.addProperty(prop)
         folder.save()
-        println "Configured folder: ${username}"
+        println "Configured: ${username}"
     }
 
-    println "Done — each user can only see their own folder"
+    println "Done — 40 users have isolated folders"
     ```
 
-1. Verify the output shows `Folders and authorization configured`.
+1. Verify the output ends with `Done — 40 users have isolated folders`. The script is idempotent — safe to re-run on a populated instance (existing matrix properties are removed before fresh ones are added, so no stacking).
 
 #### 3.1.8 Configure the Kubernetes cloud
 
@@ -503,7 +512,7 @@ The `lint-tools` image will include the following tools:
 1. After users have been provisioned and have logged in to OpenShift at least once (which creates their `User` object), grant each user access to only their own namespace:
 
     ```bash
-    for i in $(seq -w 1 20); do
+    for i in $(seq -w 1 40); do
       # Grant edit access to their own namespace only
       oc adm policy add-role-to-user edit {USER} -n user${i}-dev
 
@@ -571,7 +580,7 @@ The `lint-tools` image will include the following tools:
 1. Remove user namespaces
 
     ```bash
-    for i in $(seq -w 1 20); do
+    for i in $(seq -w 1 40); do
       oc delete project user${i}-dev --wait=false
     done
     ```
