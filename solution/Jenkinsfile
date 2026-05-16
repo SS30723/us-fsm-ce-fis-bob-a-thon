@@ -1,0 +1,948 @@
+// ═══════════════════════════════════════════════════════════════════
+// FIS Bob-a-thon — Base Pipeline (Jenkinsfile)
+// This file has a single Checkout stage. Each lab adds one more
+// stage beneath it; see labs/LAB<N>_*.md for instructions.
+//
+// Before running: if your OpenShift project is NOT named `jenkins`,
+// update the `bob` container image URL below.
+// ═══════════════════════════════════════════════════════════════════
+
+@NonCPS
+def routeJiraSecret(String jobName) {
+    def m = jobName =~ /user0*(\d+)/
+    if (!m) return 'jira-creds-n'
+    int userNum = m[0][1].toInteger()
+    if (userNum < 1) return 'jira-creds-n'
+    def letters = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n']
+    int letterIdx = Math.min((userNum - 1).intdiv(2), 13)
+    return "jira-creds-${letters[letterIdx]}"
+}
+
+def jiraSecret = routeJiraSecret(env.JOB_NAME ?: '')
+
+pipeline {
+    agent {
+        kubernetes {
+            yaml """
+apiVersion: v1
+kind: Pod
+spec:
+  serviceAccountName: jenkins
+  containers:
+  - name: build-tools
+    image: maven:3.9-eclipse-temurin-17
+    command: ['sleep', 'infinity']
+    workingDir: /workspace
+    volumeMounts:
+    - name: workspace-volume
+      mountPath: /workspace
+    env:
+    - name: HOME
+      value: /workspace
+  - name: oc-tools
+    image: quay.io/openshift/origin-cli:latest
+    command: ['sleep', 'infinity']
+    workingDir: /workspace
+    volumeMounts:
+    - name: workspace-volume
+      mountPath: /workspace
+    env:
+    - name: HOME
+      value: /workspace
+  - name: lint-tools
+    image: image-registry.openshift-image-registry.svc:5000/jenkins/lint-tools:latest
+    command: ['sleep', 'infinity']
+    workingDir: /workspace
+    volumeMounts:
+    - name: workspace-volume
+      mountPath: /workspace
+    env:
+    - name: HOME
+      value: /workspace
+  - name: bob
+    image: image-registry.openshift-image-registry.svc:5000/jenkins/bob-cli:latest
+    command: ['sleep', 'infinity']
+    workingDir: /workspace
+    volumeMounts:
+    - name: workspace-volume
+      mountPath: /workspace
+    env:
+    - name: BOBSHELL_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: bob-cli-credentials
+          key: BOBSHELL_API_KEY
+    - name: BOB_ACCEPT_LICENSE
+      value: "true"
+    - name: HOME
+      value: /workspace
+    - name: JIRA_URL
+      valueFrom:
+        secretKeyRef:
+          name: ${jiraSecret}
+          key: JIRA_URL
+    - name: JIRA_USERNAME
+      valueFrom:
+        secretKeyRef:
+          name: ${jiraSecret}
+          key: JIRA_USERNAME
+    - name: JIRA_API_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: ${jiraSecret}
+          key: JIRA_API_TOKEN
+    - name: JIRA_PROJECT
+      valueFrom:
+        secretKeyRef:
+          name: ${jiraSecret}
+          key: JIRA_PROJECT
+  volumes:
+  - name: workspace-volume
+    emptyDir: {}
+"""
+            defaultContainer 'build-tools'
+        }
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                echo "=== Checking out repository ==="
+                checkout scm
+
+                echo "=== Verifying workspace contents ==="
+                sh '''
+                    echo "Current directory: $(pwd)"
+                    echo "Workspace contents:"
+                    ls -la
+                '''
+            }
+        }
+
+        // ── Lab 1: PR / Git Diff Review ──────────────────────────
+        stage('PR Review') {
+            options {
+                timeout(time: 5, unit: 'MINUTES')
+            }
+            steps {
+                script {
+                    echo '════════════════════════════════════════════════════════'
+                    echo '  🤖 Bob PR Review Analysis'
+                    echo "  Started: ${new Date()}"
+                    echo '════════════════════════════════════════════════════════'
+
+                    catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                        // Configure git safe directory and capture diff
+                        sh '''
+                            git config --global --add safe.directory "$WORKSPACE"
+                            git diff origin/main...HEAD > git-diff.txt || : > git-diff.txt
+                        '''
+
+                        // Build prompt for Bob
+                        def prompt = "Read git-diff.txt and produce the senior-developer PR overview."
+
+                        // Run Bob analysis
+                        def analysis = askBob(prompt, 'solution-pipeline-git-diff-overview')
+
+                        // Display in console
+                        echo ''
+                        echo analysis
+                        echo ''
+
+                        // Save for archiving
+                        writeFile file: 'bob-pr-review.md', text: analysis
+                    }
+
+                    echo "  Completed: ${new Date()}"
+                    echo "  Full report: bob-pr-review.md (archived)"
+                    echo '════════════════════════════════════════════════════════'
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'bob-pr-review.md',
+                                   allowEmptyArchive: true,
+                                   fingerprint: true
+                }
+            }
+        }
+
+        // ── Lab 2: Unit Testing ──────────────────────────────────
+        stage('Unit Tests') {
+            options {
+                timeout(time: 10, unit: 'MINUTES')
+            }
+            steps {
+                script {
+                    echo '════════════════════════════════════════════════════════'
+                    echo '  🧪 Running Unit Tests'
+                    echo "  Started: ${new Date()}"
+                    echo '════════════════════════════════════════════════════════'
+
+                    // Run tests in build-tools container, continue even if tests fail
+                    def testResult = sh(
+                        script: 'mvn -f order-service/pom.xml test',
+                        returnStatus: true
+                    )
+
+                    echo ''
+                    if (testResult == 0) {
+                        echo '  ✅ All tests passed'
+                    } else {
+                        echo '  ⚠️  Some tests failed - analyzing with Bob'
+                    }
+
+                    echo "  Completed: ${new Date()}"
+                    echo '════════════════════════════════════════════════════════'
+                }
+            }
+            post {
+                always {
+                    // Publish JUnit test results
+                    junit testResults: 'order-service/target/surefire-reports/*.xml',
+                          allowEmptyResults: true
+                }
+            }
+        }
+
+        stage('Bob: Analyze Test Failures') {
+            when {
+                expression {
+                    // Only run if test reports exist and contain failures
+                    def reportsExist = fileExists('order-service/target/surefire-reports')
+                    if (!reportsExist) return false
+
+                    def reports = sh(
+                        script: 'find order-service/target/surefire-reports -name "*.xml" -exec grep -l "failures=\\"[1-9]" {} + || true',
+                        returnStdout: true
+                    ).trim()
+                    return reports != ''
+                }
+            }
+            options {
+                timeout(time: 5, unit: 'MINUTES')
+            }
+            steps {
+                script {
+                    echo '════════════════════════════════════════════════════════'
+                    echo '  🔍 Bob Test Failure Analysis'
+                    echo "  Started: ${new Date()}"
+                    echo '════════════════════════════════════════════════════════'
+
+                    catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                        // Build prompt for Bob with test reports and source context
+                        def prompt = """
+Analyze the test failures in order-service/target/surefire-reports/ and provide:
+1. Root cause of each failure
+2. Whether failures are related
+3. Suggested fixes with code examples
+4. Priority of fixes (critical, high, medium, low)
+
+Also consider the relevant source files under order-service/src/ for context.
+"""
+
+                        // Run Bob analysis
+                        def analysis = askBob(prompt, 'solution-pipeline-test-failure-analyzer')
+
+                        // Display in console
+                        echo ''
+                        echo analysis
+                        echo ''
+
+                        // Save for archiving
+                        writeFile file: 'bob-test-analysis.md', text: analysis
+                    }
+
+                    echo "  Completed: ${new Date()}"
+                    echo "  Full analysis: bob-test-analysis.md (archived)"
+                    echo '════════════════════════════════════════════════════════'
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'bob-test-analysis.md',
+                                   allowEmptyArchive: true,
+                                   fingerprint: true
+                }
+            }
+        }
+
+        // ── Lab 3: Security Scanning ─────────────────────────────
+        stage('Security Analysis') {
+            environment {
+                SONAR_TOKEN = credentials('sonarqube-token')
+                SONAR_HOST_URL = 'https://sonarqube-sonarqube.apps.itz-vl5o43.infra01-lb.wdc04.techzone.ibm.com'
+                PROJECT_KEY = "order-service-${env.USER}-${env.BUILD_NUMBER}"
+            }
+            options {
+                timeout(time: 15, unit: 'MINUTES')
+            }
+            steps {
+                script {
+                    def securityResults = [
+                        sonarqube: [
+                            bugs                  : '0',
+                            vulnerabilities       : '0',
+                            code_smells           : '0',
+                            security_hotspots     : '0',
+                            security_rating       : 'N/A',
+                            reliability_rating    : 'N/A',
+                            security_review_rating: 'N/A',
+                            task_status           : 'NOT_RUN'
+                        ],
+                        grype: [
+                            critical: 0,
+                            high    : 0,
+                            medium  : 0,
+                            total   : 0,
+                            status  : 'NOT_RUN'
+                        ],
+                        bob: [
+                            analysisGenerated       : false,
+                            deploymentRecommendation: 'PROCEED',
+                            status                  : 'NOT_RUN'
+                        ],
+                        summary: [
+                            riskScore: 0,
+                            riskLevel: 'LOW',
+                            decision : 'PROCEED'
+                        ]
+                    ]
+
+                    echo '════════════════════════════════════════════════════════'
+                    echo '  🔒 Comprehensive Security Analysis'
+                    echo "  Started: ${new Date()}"
+                    echo '════════════════════════════════════════════════════════'
+
+                    catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                        echo '────────────────────────────────────────────────────────'
+                        echo '  🛡️  Phase 1 - SonarQube Security Scanning'
+                        echo '────────────────────────────────────────────────────────'
+
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            def sonarMetricsResponse = ''
+                            def sonarMetricsFound = false
+
+                            sh '''
+                                cd order-service
+                                mvn test-compile sonar:sonar \
+                                  -Dsonar.projectKey="${PROJECT_KEY}" \
+                                  -Dsonar.host.url="${SONAR_HOST_URL}" \
+                                  -Dsonar.token="${SONAR_TOKEN}"
+                            '''
+                            securityResults.sonarqube.task_status = 'SUBMITTED'
+
+                            echo '  ⏳ Phase 1a - Waiting for SonarQube task completion'
+                            try {
+                                for (int attempt = 1; attempt <= 12; attempt++) {
+                                    def taskStatus = sh(
+                                        script: '''
+                                            curl -s "${SONAR_HOST_URL}/api/ce/component?component=${PROJECT_KEY}" \
+                                            | grep -o '"status":"[^"]*"' \
+                                            | head -1 \
+                                            | cut -d'"' -f4
+                                        ''',
+                                        returnStdout: true
+                                    ).trim()
+
+                                    securityResults.sonarqube.task_status = taskStatus ?: 'UNKNOWN'
+                                    echo "  🔄 SonarQube task check ${attempt}/12: ${securityResults.sonarqube.task_status}"
+
+                                    if (taskStatus == 'SUCCESS') {
+                                        echo '  ✅ SonarQube background task completed successfully'
+                                        break
+                                    }
+
+                                    if (taskStatus == 'FAILED') {
+                                        echo '  ❌ SonarQube background task failed'
+                                        break
+                                    }
+
+                                    if (attempt < 12) {
+                                        sleep time: 10, unit: 'SECONDS'
+                                    }
+                                }
+                            } catch (Exception e) {
+                                securityResults.sonarqube.task_status = 'ERROR'
+                                echo "  ⚠️  SonarQube task polling failed: ${e.getMessage()}"
+                            }
+
+                            if (securityResults.sonarqube.task_status == 'SUCCESS') {
+                                echo '  📊 Phase 1b - Fetching SonarQube security metrics'
+
+                                for (int attempt = 1; attempt <= 6; attempt++) {
+                                    sonarMetricsResponse = sh(
+                                        script: '''
+                                            curl -s "${SONAR_HOST_URL}/api/measures/component?component=${PROJECT_KEY}&metricKeys=bugs,vulnerabilities,code_smells,security_hotspots,security_rating,reliability_rating,security_review_rating"
+                                        ''',
+                                        returnStdout: true
+                                    ).trim()
+
+                                    def sonarData = new groovy.json.JsonSlurper().parseText(sonarMetricsResponse)
+                                    if (sonarData.component?.measures && sonarData.component.measures.size() > 0) {
+                                        sonarData.component.measures.each { measure ->
+                                            securityResults.sonarqube[measure.metric] = "${measure.value ?: '0'}"
+                                        }
+                                        sonarMetricsFound = true
+                                        sonarData = null
+                                        echo "  ✅ SonarQube metrics fetched on attempt ${attempt}/6"
+                                        break
+                                    }
+
+                                    sonarData = null
+                                    echo "  🔄 SonarQube metrics not ready on attempt ${attempt}/6"
+                                    if (attempt < 6) {
+                                        sleep time: 5, unit: 'SECONDS'
+                                    }
+                                }
+
+                                if (!sonarMetricsFound) {
+                                    echo '  ⚠️  SonarQube metrics were not available after retries'
+                                }
+                                sonarMetricsResponse = ''
+                            } else {
+                                echo "  ⚠️  Skipping metrics fetch because task status is ${securityResults.sonarqube.task_status}"
+                            }
+
+                            echo '  📋 SonarQube Metrics'
+                            echo "    Bugs: ${securityResults.sonarqube.bugs}"
+                            echo "    Vulnerabilities: ${securityResults.sonarqube.vulnerabilities}"
+                            echo "    Code Smells: ${securityResults.sonarqube.code_smells}"
+                            echo "    Security Hotspots: ${securityResults.sonarqube.security_hotspots}"
+                            echo "    Security Rating: ${securityResults.sonarqube.security_rating}"
+                            echo "    Reliability Rating: ${securityResults.sonarqube.reliability_rating}"
+                            echo "    Security Review Rating: ${securityResults.sonarqube.security_review_rating}"
+                        }
+
+                        echo '────────────────────────────────────────────────────────'
+                        echo '  🧪 Phase 2 - Grype Vulnerability Scanning'
+                        echo '────────────────────────────────────────────────────────'
+
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            container('build-tools') {
+                                sh '''
+                                    curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+                                    cd order-service
+                                    grype dir:. --scope all-layers -o json > grype-report.json
+                                '''
+
+                                securityResults.grype.critical = sh(
+                                    script: "grep -o '\"severity\":\"Critical\"' order-service/grype-report.json | wc -l | tr -d ' '",
+                                    returnStdout: true
+                                ).trim().toInteger()
+
+                                securityResults.grype.high = sh(
+                                    script: "grep -o '\"severity\":\"High\"' order-service/grype-report.json | wc -l | tr -d ' '",
+                                    returnStdout: true
+                                ).trim().toInteger()
+
+                                securityResults.grype.medium = sh(
+                                    script: "grep -o '\"severity\":\"Medium\"' order-service/grype-report.json | wc -l | tr -d ' '",
+                                    returnStdout: true
+                                ).trim().toInteger()
+
+                                securityResults.grype.total = securityResults.grype.critical + securityResults.grype.high + securityResults.grype.medium
+                                securityResults.grype.status = 'SUCCESS'
+
+                                echo '  📋 Grype Findings'
+                                echo "    Critical: ${securityResults.grype.critical}"
+                                echo "    High: ${securityResults.grype.high}"
+                                echo "    Medium: ${securityResults.grype.medium}"
+                                echo "    Total: ${securityResults.grype.total}"
+                            }
+                        }
+
+                        if (securityResults.grype.status != 'SUCCESS') {
+                            securityResults.grype.status = 'ERROR'
+                            echo '  ⚠️  Grype scan did not complete successfully'
+                        }
+
+                        echo '────────────────────────────────────────────────────────'
+                        echo '  🤖 Phase 3 - CVE Analysis with Bob'
+                        echo '────────────────────────────────────────────────────────'
+
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            if (securityResults.grype.total > 0) {
+                                def prompt = """
+Perform a deployment-focused CVE risk assessment for this build.
+
+SonarQube results:
+- Task status: ${securityResults.sonarqube.task_status}
+- Bugs: ${securityResults.sonarqube.bugs}
+- Vulnerabilities: ${securityResults.sonarqube.vulnerabilities}
+- Code smells: ${securityResults.sonarqube.code_smells}
+- Security hotspots: ${securityResults.sonarqube.security_hotspots}
+- Security rating: ${securityResults.sonarqube.security_rating}
+- Reliability rating: ${securityResults.sonarqube.reliability_rating}
+- Security review rating: ${securityResults.sonarqube.security_review_rating}
+
+Grype results:
+- Critical CVEs: ${securityResults.grype.critical}
+- High CVEs: ${securityResults.grype.high}
+- Medium CVEs: ${securityResults.grype.medium}
+- Total findings: ${securityResults.grype.total}
+
+Read the Grype report from order-service/grype-report.json and provide:
+1. Overall risk assessment
+2. Top 3 vulnerabilities to prioritize
+3. Concrete remediation steps
+4. Deployment recommendation: BLOCK, WARN, or PROCEED
+
+Keep the output concise and suitable for a Jenkins console log.
+"""
+                                def cveAnalysis = askBob(prompt)
+
+                                echo '════════════════════════════════════════════════════════'
+                                echo '  Bob — CVE Analysis'
+                                echo '════════════════════════════════════════════════════════'
+                                echo cveAnalysis
+                                echo '════════════════════════════════════════════════════════'
+
+                                writeFile file: 'bob-cve-analysis.txt', text: cveAnalysis
+                                securityResults.bob.analysisGenerated = true
+                                securityResults.bob.status = 'SUCCESS'
+
+                                def recommendationLine = cveAnalysis.readLines().find { line ->
+                                    line.toUpperCase().contains('BLOCK') ||
+                                    line.toUpperCase().contains('WARN') ||
+                                    line.toUpperCase().contains('PROCEED')
+                                } ?: ''
+
+                                if (recommendationLine.toUpperCase().contains('BLOCK')) {
+                                    securityResults.bob.deploymentRecommendation = 'BLOCK'
+                                } else if (recommendationLine.toUpperCase().contains('WARN')) {
+                                    securityResults.bob.deploymentRecommendation = 'WARN'
+                                } else {
+                                    securityResults.bob.deploymentRecommendation = 'PROCEED'
+                                }
+
+                                echo "  🚦 Bob deployment recommendation: ${securityResults.bob.deploymentRecommendation}"
+                            } else {
+                                echo '  ✅ No Grype vulnerabilities detected - skipping Bob CVE analysis'
+                                writeFile file: 'bob-cve-analysis.txt', text: 'No vulnerabilities detected by Grype. Bob CVE analysis skipped.'
+                                securityResults.bob.analysisGenerated = false
+                                securityResults.bob.deploymentRecommendation = 'PROCEED'
+                                securityResults.bob.status = 'SKIPPED'
+                            }
+                        }
+
+                        echo '────────────────────────────────────────────────────────'
+                        echo '  📈 Phase 4 - Risk Level Calculation'
+                        echo '────────────────────────────────────────────────────────'
+
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            String sonarVulnerabilitiesValue = "${securityResults.sonarqube.vulnerabilities ?: '0'}"
+                            String sonarHotspotsValue = "${securityResults.sonarqube.security_hotspots ?: '0'}"
+                            String sonarBugsValue = "${securityResults.sonarqube.bugs ?: '0'}"
+
+                            int sonarVulnerabilities = Integer.parseInt(sonarVulnerabilitiesValue.isInteger() ? sonarVulnerabilitiesValue : '0')
+                            int sonarHotspots = Integer.parseInt(sonarHotspotsValue.isInteger() ? sonarHotspotsValue : '0')
+                            int sonarBugs = Integer.parseInt(sonarBugsValue.isInteger() ? sonarBugsValue : '0')
+                            int criticalCves = securityResults.grype.critical as Integer
+                            int highCves = securityResults.grype.high as Integer
+
+                            int riskScore = (sonarVulnerabilities * 10) +
+                                            (sonarHotspots * 5) +
+                                            (sonarBugs * 2) +
+                                            (criticalCves * 20) +
+                                            (highCves * 10)
+
+                            String riskLevel = 'LOW'
+                            if (riskScore >= 50) {
+                                riskLevel = 'CRITICAL'
+                            } else if (riskScore >= 30) {
+                                riskLevel = 'HIGH'
+                            } else if (riskScore >= 10) {
+                                riskLevel = 'MEDIUM'
+                            }
+
+                            securityResults.summary.riskScore = riskScore
+                            securityResults.summary.riskLevel = riskLevel
+
+                            echo "  🧮 Risk score: ${securityResults.summary.riskScore}"
+                            echo "  🏷️  Risk level: ${securityResults.summary.riskLevel}"
+                        }
+
+                        echo '────────────────────────────────────────────────────────'
+                        echo '  🚦 Phase 5 - Deployment Decision'
+                        echo '────────────────────────────────────────────────────────'
+
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            if (securityResults.summary.riskLevel == 'CRITICAL') {
+                                securityResults.summary.decision = 'BLOCK'
+                                currentBuild.result = 'UNSTABLE'
+                                echo '  ⛔ Deployment blocked due to CRITICAL security risk'
+                            } else if (securityResults.summary.riskLevel == 'HIGH') {
+                                securityResults.summary.decision = 'WARN'
+                                echo '  ⚠️  HIGH risk detected - manual security review recommended before deployment'
+                            } else {
+                                securityResults.summary.decision = 'PROCEED'
+                                echo '  ✅ Security posture acceptable to proceed with approval'
+                            }
+
+                            echo "  📌 Final deployment decision: ${securityResults.summary.decision}"
+                            echo "  🤖 Bob recommendation: ${securityResults.bob.deploymentRecommendation}"
+                        }
+
+                        echo '────────────────────────────────────────────────────────'
+                        echo '  📝 Phase 6 - Consolidated Report Generation'
+                        echo '────────────────────────────────────────────────────────'
+
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            def cveAnalysisText = fileExists('bob-cve-analysis.txt') ? readFile('bob-cve-analysis.txt') : 'Bob CVE analysis was not generated.'
+
+                            def report = """# Security Analysis Report
+
+## Executive Summary
+- Project Key: ${PROJECT_KEY}
+- SonarQube Task Status: ${securityResults.sonarqube.task_status}
+- Overall Risk Score: ${securityResults.summary.riskScore}
+- Overall Risk Level: ${securityResults.summary.riskLevel}
+- Deployment Decision: ${securityResults.summary.decision}
+- Bob Recommendation: ${securityResults.bob.deploymentRecommendation}
+
+## SonarQube Results
+
+| Metric | Value |
+| --- | --- |
+| Bugs | ${securityResults.sonarqube.bugs} |
+| Vulnerabilities | ${securityResults.sonarqube.vulnerabilities} |
+| Code Smells | ${securityResults.sonarqube.code_smells} |
+| Security Hotspots | ${securityResults.sonarqube.security_hotspots} |
+| Security Rating | ${securityResults.sonarqube.security_rating} |
+| Reliability Rating | ${securityResults.sonarqube.reliability_rating} |
+| Security Review Rating | ${securityResults.sonarqube.security_review_rating} |
+
+## Grype Results
+- Critical CVEs: ${securityResults.grype.critical}
+- High CVEs: ${securityResults.grype.high}
+- Medium CVEs: ${securityResults.grype.medium}
+- Total CVEs: ${securityResults.grype.total}
+- Scan Status: ${securityResults.grype.status}
+
+## CVE Analysis
+${cveAnalysisText}
+
+## Deployment Recommendation
+- Pipeline Decision: ${securityResults.summary.decision}
+- Bob Recommendation: ${securityResults.bob.deploymentRecommendation}
+- Suggested Action: ${securityResults.summary.decision == 'BLOCK' ? 'Do not deploy until critical issues are remediated.' : securityResults.summary.decision == 'WARN' ? 'Require manual security review before deployment.' : 'Proceed with normal approval flow.'}
+"""
+                            writeFile file: 'security-analysis-report.md', text: report
+                            echo '  📦 Security report written to security-analysis-report.md'
+                        }
+                    }
+
+                    echo "  Completed: ${new Date()}"
+                    echo '════════════════════════════════════════════════════════'
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'security-analysis-report.md,bob-cve-analysis.txt,order-service/grype-report.json',
+                                   allowEmptyArchive: true,
+                                   fingerprint: true
+                }
+            }
+        }
+
+        // ── Lab 4: Linting ───────────────────────────────────────
+        stage('Run Linters') {
+            options {
+                timeout(time: 10, unit: 'MINUTES')
+            }
+            steps {
+                script {
+                    echo '════════════════════════════════════════════════════════'
+                    echo '  🔍 Running Linters'
+                    echo "  Started: ${new Date()}"
+                    echo '════════════════════════════════════════════════════════'
+
+                    // Create lint-results directory
+                    sh 'mkdir -p lint-results'
+
+                    // Run Checkstyle
+                    echo '────────────────────────────────────────────────────────'
+                    echo '  ✓ Running Checkstyle on Java code'
+                    echo '────────────────────────────────────────────────────────'
+                    catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                        sh '''
+                            mvn -f order-service/pom.xml checkstyle:check || true
+                            if [ -f order-service/target/checkstyle-result.xml ]; then
+                                cp order-service/target/checkstyle-result.xml lint-results/checkstyle.xml
+                                echo "  ✅ Checkstyle report saved to lint-results/checkstyle.xml"
+                            else
+                                echo "  ⚠️  Checkstyle report not found"
+                            fi
+                        '''
+                    }
+
+                    // Run Hadolint
+                    echo '────────────────────────────────────────────────────────'
+                    echo '  🐳 Running Hadolint on Dockerfile'
+                    echo '────────────────────────────────────────────────────────'
+                    catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                        container('lint-tools') {
+                            sh '''
+                                hadolint order-service/Dockerfile > lint-results/hadolint.txt 2>&1 || true
+                                if [ -s lint-results/hadolint.txt ]; then
+                                    echo "  ✅ Hadolint report saved to lint-results/hadolint.txt"
+                                else
+                                    echo "  ✅ No Hadolint issues found" > lint-results/hadolint.txt
+                                fi
+                            '''
+                        }
+                    }
+
+                    // Run Checkov
+                    echo '────────────────────────────────────────────────────────'
+                    echo '  🛡️  Running Checkov on Kubernetes manifests'
+                    echo '────────────────────────────────────────────────────────'
+                    catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                        container('lint-tools') {
+                            sh '''
+                                checkov -d order-service/deploy-flawed/ --compact --quiet > lint-results/checkov.txt 2>&1 || true
+                                if [ -s lint-results/checkov.txt ]; then
+                                    echo "  ✅ Checkov report saved to lint-results/checkov.txt"
+                                else
+                                    echo "  ✅ No Checkov issues found" > lint-results/checkov.txt
+                                fi
+                            '''
+                        }
+                    }
+
+                    // Run KubeLinter
+                    echo '────────────────────────────────────────────────────────'
+                    echo '  ☸️  Running KubeLinter on Kubernetes manifests'
+                    echo '────────────────────────────────────────────────────────'
+                    catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                        container('lint-tools') {
+                            sh '''
+                                kube-linter lint order-service/deploy-flawed/ > lint-results/kubelinter.txt 2>&1 || true
+                                if [ -s lint-results/kubelinter.txt ]; then
+                                    echo "  ✅ KubeLinter report saved to lint-results/kubelinter.txt"
+                                else
+                                    echo "  ✅ No KubeLinter issues found" > lint-results/kubelinter.txt
+                                fi
+                            '''
+                        }
+                    }
+
+                    echo "  Completed: ${new Date()}"
+                    echo '════════════════════════════════════════════════════════'
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'lint-results/*',
+                                   allowEmptyArchive: true,
+                                   fingerprint: true
+                }
+            }
+        }
+
+        stage('Bob Lint Analysis') {
+            when {
+                expression {
+                    // Only run if at least one lint result file exists
+                    return fileExists('lint-results/checkstyle.xml') ||
+                           fileExists('lint-results/hadolint.txt') ||
+                           fileExists('lint-results/checkov.txt') ||
+                           fileExists('lint-results/kubelinter.txt')
+                }
+            }
+            options {
+                timeout(time: 10, unit: 'MINUTES')
+            }
+            steps {
+                script {
+                    echo '════════════════════════════════════════════════════════'
+                    echo '  🤖 Bob Lint Analysis'
+                    echo "  Started: ${new Date()}"
+                    echo '════════════════════════════════════════════════════════'
+
+                    catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                        // Build prompt for Bob to read lint results directly
+                        def prompt = """
+Analyze the linting results from multiple tools and provide a consolidated report.
+
+Read and analyze the following lint result files:
+- lint-results/checkstyle.xml
+- lint-results/hadolint.txt
+- lint-results/checkov.txt
+- lint-results/kubelinter.txt
+
+Also review the source files for context:
+- order-service/src/
+- order-service/Dockerfile
+- order-service/deploy-flawed/
+
+Provide:
+1. Findings grouped by severity (Critical, High, Medium, Low)
+2. De-duplicated overlapping findings across tools
+3. Top 3-5 highest-priority remediations
+4. Concrete fix recommendations with code examples
+
+Output in markdown format suitable for archiving.
+"""
+
+                        // Run Bob analysis
+                        def analysis = askBob(prompt, 'solution-pipeline-lint-analyzer')
+
+                        // Display summary in console
+                        echo ''
+                        echo '  📊 Lint Analysis Summary:'
+                        if (analysis.contains('Critical')) {
+                            echo '    🔴 Critical issues found'
+                        }
+                        if (analysis.contains('High')) {
+                            echo '    🟠 High priority issues found'
+                        }
+                        if (analysis.contains('Medium')) {
+                            echo '    🟡 Medium priority issues found'
+                        }
+                        echo ''
+
+                        // Save full analysis
+                        writeFile file: 'bob-lint-report.md', text: analysis
+
+                        echo '────────────────────────────────────────────────────────'
+                        echo '  💬 Generating PR Comment'
+                        echo '────────────────────────────────────────────────────────'
+
+                        // Generate concise PR comment
+                        def prCommentPrompt = """
+Read bob-lint-report.md and create a concise PR comment summary.
+
+The comment should:
+- Be brief and scannable (max 15-20 lines)
+- Highlight only the most critical findings
+- Use emoji for visual clarity
+- Include actionable next steps
+- Be formatted for GitHub/GitLab PR comments
+
+Keep it professional and constructive.
+"""
+
+                        def prComment = askBob(prCommentPrompt, 'solution-pipeline-lint-analyzer')
+
+                        // Save PR comment
+                        writeFile file: 'bob-lint-pr-comment.md', text: prComment
+
+                        // Display PR comment in console
+                        echo ''
+                        echo '════════════════════════════════════════════════════════'
+                        echo '  📝 PR Comment Preview'
+                        echo '════════════════════════════════════════════════════════'
+                        echo prComment
+                        echo '════════════════════════════════════════════════════════'
+                    }
+
+                    echo ''
+                    echo "  Completed: ${new Date()}"
+                    echo "  Full report: bob-lint-report.md (archived)"
+                    echo "  PR comment: bob-lint-pr-comment.md (archived)"
+                    echo '════════════════════════════════════════════════════════'
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'bob-lint-report.md,bob-lint-pr-comment.md',
+                                   allowEmptyArchive: true,
+                                   fingerprint: true
+                }
+            }
+        }
+
+        // ── Lab 5: DCR & Reporting ───────────────────────────────
+        stage('DCR') {
+            options {
+                timeout(time: 5, unit: 'MINUTES')
+            }
+            steps {
+                script {
+                    echo '════════════════════════════════════════════════════════'
+                    echo '  📋 Deployment Change Request Generation'
+                    echo "  Started: ${new Date()}"
+                    echo '════════════════════════════════════════════════════════'
+
+                    catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                        // Configure git safe directory and gather change material
+                        sh '''
+                            git config --global --add safe.directory "$WORKSPACE"
+
+                            # Gather commit history
+                            git log origin/main..HEAD --pretty=format:'%h %s' > dcr-commits.txt || : > dcr-commits.txt
+
+                            # Gather diffstat
+                            git diff origin/main...HEAD --stat > dcr-diffstat.txt || : > dcr-diffstat.txt
+
+                            # Gather context information
+                            echo "BUILD_NUMBER=${BUILD_NUMBER}" > dcr-context.txt
+                            echo "BRANCH=$(git rev-parse --abbrev-ref HEAD)" >> dcr-context.txt
+                            echo "JIRA_PROJECT=KAN" >> dcr-context.txt
+                        '''
+
+                        // Build prompt for Bob
+                        def prompt = """
+Read the following files and produce a Deployment Change Request per the mode's rules:
+- dcr-commits.txt
+- dcr-diffstat.txt
+- dcr-context.txt
+- bob-pr-review.md (if present)
+- bob-test-analysis.md (if present)
+
+Generate a comprehensive DCR suitable for filing as a Jira ticket.
+"""
+
+                        // Run Bob analysis
+                        def dcr = askBob(prompt, 'pipeline-dcr-jira-reporter')
+
+                        // Display in console
+                        echo ''
+                        echo dcr
+                        echo ''
+
+                        // Save for archiving
+                        writeFile file: 'deployment-change-request.md', text: dcr
+                    }
+
+                    echo "  Completed: ${new Date()}"
+                    echo "  DCR saved to: deployment-change-request.md (archived)"
+                    echo '════════════════════════════════════════════════════════'
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'deployment-change-request.md,dcr-*.txt',
+                                   allowEmptyArchive: true,
+                                   fingerprint: true
+                }
+            }
+        }
+
+    }
+
+    post {
+        always {
+            echo "=== Pipeline Complete ==="
+            echo "Result: ${currentBuild.result ?: 'SUCCESS'}"
+        }
+    }
+}
+
+def askBob(String prompt, String mode = null) {
+    container('bob') {
+        def promptFile = ".bob-prompt-${System.currentTimeMillis()}.txt"
+        writeFile file: promptFile, text: prompt
+
+        def modeFlag = mode ? "--chat-mode ${mode}" : ""
+        def analysis = sh(
+            script: """bob ${modeFlag} -p "\$(cat ${promptFile})" --hide-intermediary-output""",
+            returnStdout: true
+        ).trim()
+
+        sh "rm -f ${promptFile}"
+        return analysis
+    }
+}
