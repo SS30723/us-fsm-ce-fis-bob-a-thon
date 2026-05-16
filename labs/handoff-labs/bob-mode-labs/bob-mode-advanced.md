@@ -96,7 +96,7 @@ modes:
     4_validations.xml            # Validation rules
 ```
 
-See [examples/.bob/rules-feature-dev-workflow/](../examples/.bob/rules-feature-dev-workflow/) and [examples/.bob/rules-bug-fix-workflow/](../examples/.bob/rules-bug-fix-workflow/) for complete XML examples.
+See [examples/.bob/rules-feature-dev-workflow/](examples/.bob/rules-feature-dev-workflow/) and [examples/.bob/rules-bug-fix-workflow/](examples/.bob/rules-bug-fix-workflow/) for complete XML examples.
 
 ### The Hybrid Approach (Recommended)
 
