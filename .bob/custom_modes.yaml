@@ -45,6 +45,7 @@ customModes:
           description: Mode configuration files, XML instructions, and markdown files
       - command
       - mcp
+
   - slug: solution-code-reviewer
     name: 👀 Code Reviewer
     description: Code review specialist for Java applications
@@ -68,6 +69,7 @@ customModes:
       - Provide specific line numbers when suggesting changes
       - Explain the reasoning behind each recommendation
       - Consider the context of the entire application
+
   - slug: jenkins-bob-integration
     name: 🔧 Jenkins Pipeline Integration
     description: Specialist in writing Jenkins Declarative Pipeline stages that integrate Bob CLI
@@ -104,6 +106,7 @@ customModes:
       - - edit
         - fileRegex: (Jenkinsfile.*|\.bob/custom_modes\.yaml)$
           description: Jenkinsfile and Bob custom modes configuration only
+
   - slug: solution-pipeline-git-diff-overview
     name: 📊 Solution Git Diff Overview
     description: Quick risk-oriented overview of git diffs for Jenkins console output
@@ -135,6 +138,7 @@ customModes:
       - Keep it brief - if nothing notable, say so in one sentence
       - Focus on risk-oriented observations, not style or formatting
       - Prioritize: null-safety, concurrency, behavior changes, security, performance, test coverage
+
   - slug: solution-pipeline-test-failure-analyzer
     name: 🔬 Solution Test Failure Analyzer
     description: Diagnoses JUnit/Surefire test failures and proposes fixes for Jenkins pipelines
@@ -178,6 +182,7 @@ customModes:
       - Group related failures that share a root cause
       - Focus on actionable fixes, not explanations
       - If multiple tests fail for the same reason, say so once
+
   - slug: solution-pipeline-lint-analyzer
     name: 🔍 Solution Pipeline Lint Analyzer
     description: Analyzes lint output from Checkstyle, Hadolint, Checkov, and KubeLinter to produce concise Jenkins reports
