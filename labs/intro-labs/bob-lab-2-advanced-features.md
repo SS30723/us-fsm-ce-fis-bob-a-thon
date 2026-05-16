@@ -100,7 +100,13 @@ Usage: bob [options] [command]
 
 ### Interactive Mode
 
-Launch Bob in interactive mode for terminal-based conversations:
+First, navigate to the sandbox directory you created in Intro Lab 1 — Bob's working directory is wherever you launch it from, and you want this session scoped to your sandbox:
+
+```bash
+cd labs/intro-labs/sandbox
+```
+
+Then launch Bob in interactive mode for terminal-based conversations:
 
 ```bash
 # Start interactive session
@@ -137,9 +143,8 @@ Execute single commands for automation and scripting:
 **Create a test file first:**
 
 ```bash
-# Create the sandbox dir (if Lab 1 didn't already) and a simple Python file inside it
-mkdir -p labs/intro-labs/sandbox
-cat > labs/intro-labs/sandbox/calculator.py << 'EOF'
+# You should already be in the sandbox directory
+cat > calculator.py << 'EOF'
 def add(a, b):
     return a + b
 
@@ -152,13 +157,13 @@ EOF
 
 ```bash
 # Explain code in a file
-bob "Explain what labs/intro-labs/sandbox/calculator.py does"
+bob "Explain what calculator.py does"
+
+# Try again with --hide-intermediary-output
+bob "Explain what calculator.py does" --hide-intermediary-output
 
 # Review code
-bob "Review labs/intro-labs/sandbox/calculator.py and suggest improvements"
-
-# Generate new code (with auto-approval)
-bob "Create a Python function that calculates factorial" --yolo --hide-intermediary-output > labs/intro-labs/sandbox/factorial.py
+bob "Review calculator.py and suggest improvements"
 
 # Quick questions
 bob "What is the difference between a list and a tuple in Python?"
@@ -649,30 +654,44 @@ Custom modes configure Bob for specific workflows and tasks. They define:
 
 ### Creating Custom Modes
 
+Custom modes live in `.bob/custom_modes.yaml` (project-scoped) or `~/.bob/custom_modes.yaml` (global). The file holds a list under `customModes:` — each entry is one mode.
+
 **Basic Mode Structure:**
 
-```json
-{
-  "slug": "my-custom-mode",
-  "name": "My Custom Mode",
-  "roleDefinition": "You are a specialized assistant for [specific task]. Focus on [key areas].",
-  "whenToUse": "Use this mode when [specific scenarios].",
-  "groups": ["read", "edit", "execute"]
-}
+```yaml
+customModes:
+  - slug: my-custom-mode
+    name: My Custom Mode
+    roleDefinition: |
+      You are a specialized assistant for [specific task]. Focus on [key areas].
+    whenToUse: |
+      Use this mode when [specific scenarios].
+    groups:
+      - read
+      - edit
+      - command
 ```
+
+Valid `groups` values: `read`, `edit`, `command`, `browser`, `mcp`. (`command` is what gives the mode permission to run shell commands — there is no `execute` group.)
 
 **Advanced Mode with MCP:**
 
-```json
-{
-  "slug": "devops-mode",
-  "name": "DevOps Mode",
-  "roleDefinition": "You are a DevOps specialist. Help with deployments, monitoring, and infrastructure.",
-  "whenToUse": "Use for deployment, infrastructure, and operational tasks.",
-  "groups": ["read", "edit", "execute"],
-  "mcpServers": ["deployment-server", "monitoring-server"]
-}
+```yaml
+customModes:
+  - slug: devops-mode
+    name: 🚀 DevOps Mode
+    roleDefinition: |
+      You are a DevOps specialist. Help with deployments, monitoring, and infrastructure.
+    whenToUse: |
+      Use for deployment, infrastructure, and operational tasks.
+    groups:
+      - read
+      - edit
+      - command
+      - mcp
 ```
+
+To give a mode MCP access, include `mcp` in its `groups`. The MCP **servers themselves** (their command, args, env, `alwaysAllow` list, etc.) are declared separately in `.bob/mcp.json` — the same file you edited earlier in this lab. The mode just declares whether it's *allowed* to call MCP tools; which specific tools auto-approve vs. prompt for confirmation is governed by `alwaysAllow` in `.bob/mcp.json`.
 
 ### Managing Custom Modes
 
@@ -680,7 +699,7 @@ Custom modes configure Bob for specific workflows and tasks. They define:
 1. Open Bob Settings
 2. Navigate to **Modes**
 3. Click **Import Mode**
-4. Select your mode file (`.json`)
+4. Select your mode file (`.yaml`)
 5. The mode appears in Bob's mode selector
 
 **To remove a custom mode:**
@@ -690,10 +709,10 @@ Custom modes configure Bob for specific workflows and tasks. They define:
 4. Click the delete/trash icon
 5. Confirm deletion
 
-**Alternative - Manual management:**
-- Custom modes stored in: `~/.bob/modes/`
-- Delete the JSON file to remove a mode
-- Restart Bob after manual changes
+**Alternative — manual management:**
+- Custom modes are stored in `.bob/custom_modes.yaml` (project-scoped) or `~/.bob/custom_modes.yaml` (global).
+- Add a mode by appending a new entry under `customModes:`. Remove a mode by deleting its entry.
+- Bob picks up changes on the next mode-selector load — no IDE restart needed for project-scoped edits.
 
 > 📌 **Learn More:** [Custom Modes Documentation](https://bob.ibm.com/docs/ide/configuration/custom-modes)
 

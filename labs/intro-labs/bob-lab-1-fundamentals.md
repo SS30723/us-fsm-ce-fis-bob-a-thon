@@ -125,7 +125,13 @@ Bob has specialized modes, each optimized for different types of work:
 **Example prompts:**
 ```text
 Help me design a REST API for a user management system
+```
+
+```text
 Plan the database schema for an e-commerce application
+```
+
+```text
 What's the best architecture for a microservices-based system?
 ```
 
@@ -143,7 +149,11 @@ What's the best architecture for a microservices-based system?
 **Example prompts:**
 ```text
 Create a user authentication module in Python
+```
+```text
 Add error handling to the payment processing function
+```
+```text
 Refactor this code to use async/await
 ```
 
@@ -161,7 +171,11 @@ Refactor this code to use async/await
 **Example prompts:**
 ```text
 Explain how JWT authentication works
+```
+```text
 What's the difference between REST and GraphQL?
+```
+```text
 Why is this code throwing a NullPointerException?
 ```
 

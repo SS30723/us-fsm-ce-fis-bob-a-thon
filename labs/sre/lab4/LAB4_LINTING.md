@@ -347,4 +347,4 @@ If you have completed the lab and want to explore different linting challenges, 
 
 ---
 
-When you're ready, continue to [`labs/sre/lab5/LAB5_DCR_JIRA.md`](labs/sre/lab5/LAB5_DCR_JIRA.md).
+When you're ready, continue to [LAB5_DCR_JIRA.md](../lab5/LAB5_DCR_JIRA.md).
