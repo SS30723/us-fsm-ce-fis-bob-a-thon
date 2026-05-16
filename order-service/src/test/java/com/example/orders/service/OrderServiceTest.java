@@ -45,7 +45,7 @@ class OrderServiceTest {
     void getAllOrders_returnsAllOrders() {
         when(orderRepository.findAll()).thenReturn(Arrays.asList(testOrder));
         List<Order> orders = orderService.getAllOrders();
-        assertThat(orders).hasSize(1);
+        assertThat(orders).hasSize(2);
         assertThat(orders.get(0).getCustomerName()).isEqualTo("John Doe");
     }
 
@@ -118,5 +118,50 @@ class OrderServiceTest {
     void deleteOrder_callsRepository() {
         orderService.deleteOrder(1L);
         verify(orderRepository).deleteById(1L);
+    }
+
+    @Test
+    void getOrdersByStatus_existingStatus_returnsMatchingOrders() {
+        Order order1 = new Order();
+        order1.setId(1L);
+        order1.setCustomerName("John");
+        order1.setStatus("PENDING");
+
+        Order order2 = new Order();
+        order2.setId(2L);
+        order2.setCustomerName("Jane");
+        order2.setStatus("PENDING");
+
+        when(orderRepository.findByStatus("PENDING")).thenReturn(Arrays.asList(order1, order2));
+
+        List<Order> results = orderService.getOrdersByStatus("PENDING");
+
+        assertThat(results).hasSize(2);
+        assertThat(results).extracting(Order::getStatus)
+                .containsOnly("PENDING");
+    }
+
+    @Test
+    void getOrdersByStatus_noMatchingOrders_returnsEmptyList() {
+        when(orderRepository.findByStatus("SHIPPED")).thenReturn(Arrays.asList());
+
+        List<Order> results = orderService.getOrdersByStatus("SHIPPED");
+
+        assertThat(results).isEmpty();
+    }
+
+    @Test
+    void getOrdersByStatus_multipleStatuses_returnsOnlyMatching() {
+        Order pendingOrder = new Order();
+        pendingOrder.setId(1L);
+        pendingOrder.setStatus("PENDING");
+
+        when(orderRepository.findByStatus("PENDING")).thenReturn(Arrays.asList(pendingOrder));
+
+        List<Order> results = orderService.getOrdersByStatus("PENDING");
+
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).getStatus()).isEqualTo("PENDING");
+        verify(orderRepository).findByStatus("PENDING");
     }
 }

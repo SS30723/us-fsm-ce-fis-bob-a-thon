@@ -175,6 +175,62 @@ Read git-diff.txt and produce a concise PR overview with:
             }
         }
 
+        stage('Unit Tests') {
+            steps {
+                script {
+                    echo '════════════════════════════════════════════════════════'
+                    echo '  Running Unit Tests'
+                    echo '════════════════════════════════════════════════════════'
+
+                    // Run tests and capture result, continue even if tests fail
+                    def testResult = sh(
+                        script: 'mvn -f order-service/pom.xml test',
+                        returnStatus: true
+                    )
+
+                    echo "Test exit code: ${testResult}"
+
+                    // Publish JUnit results
+                    junit testResults: 'order-service/target/surefire-reports/*.xml',
+                          allowEmptyResults: true
+
+                    // If tests failed, analyze with Bob
+                    if (testResult != 0) {
+                        catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                            echo '════════════════════════════════════════════════════════'
+                            echo '  Bob Test Failure Analysis'
+                            echo '════════════════════════════════════════════════════════'
+
+                            def prompt = """
+Analyze the test failures in order-service/target/surefire-reports/ and the relevant source files under order-service/src/.
+
+Provide:
+1. Root cause of each failure
+2. Whether failures are related
+3. Suggested fixes with code examples
+4. Priority of fixes (critical, high, medium, low)
+"""
+
+                            def analysis = askBob(prompt, 'pipeline-test-failure-analyzer')
+
+                            echo analysis
+                            echo '════════════════════════════════════════════════════════'
+
+                            writeFile file: 'bob-test-analysis.md', text: analysis
+                        }
+                    } else {
+                        echo '✅ All tests passed'
+                    }
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'bob-test-analysis.md',
+                                   allowEmptyArchive: true
+                }
+            }
+        }
+
         // ── Lab 1: PR / Git Diff Review ──────────────────────────
         //    Add a stage here that runs Bob in a "senior developer"
         //    mode against the git diff. See labs/LAB1_PR_REVIEW.md.
