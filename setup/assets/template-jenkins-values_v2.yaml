@@ -23,6 +23,7 @@ controller:
     - matrix-auth:latest
     - cloudbees-folder:latest
     - pipeline-graph-view:latest
+    - pipeline-utility-steps:latest
   service:
     type: ClusterIP
   serviceAccount:
