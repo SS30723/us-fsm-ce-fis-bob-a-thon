@@ -15,36 +15,32 @@ Before you begin, ensure you have the following installed:
   - uv is 10-100x faster than pip and provides better dependency resolution
 
 ### Optional (for specific examples)
-- **Podman** - Required for Lab 07 (Code Sandbox)
-  - [Podman Installation Guide](https://podman.io/getting-started/installation)
-  - Podman is a daemonless container engine for developing, managing, and running containers
+- **FastAPI** - Required for Lab 05 (API to MCP)
+  - Installed via `uv pip install -r requirements.txt` in the lab directory
+  - Used for the example financial services API
 
 ## Overview
 
-Eight examples showcasing MCP server development with [FastMCP](https://github.com/jlowin/fastmcp):
+Five examples showcasing MCP server development with [FastMCP](https://github.com/jlowin/fastmcp):
 
 | Example | Level | Focus | Transport | Deployment |
 |---------|-------|-------|-----------|------------|
 | [01-simple-calculator](./01-simple-calculator/) | Beginner | Single-file implementation, core concepts | stdio | Local |
 | [02-structured-calculator](./02-structured-calculator/) | Intermediate | Package architecture, production patterns | stdio | Local |
 | [03-file-operations](./03-file-operations/) | Intermediate | File system operations, security controls | stdio | Local |
-| [04-web-scraping](./04-web-scraping/) | Intermediate | HTML parsing, content extraction, CSS selectors | stdio | Local |
-| [05-database-operations](./05-database-operations/) | Intermediate | SQLite CRUD operations, schema management | stdio | Local |
-| [06-api-integration](./06-api-integration/) | Advanced | External APIs, HTTP methods, authentication | stdio | Local |
-| [07-code-sandbox](./07-code-sandbox/) | Advanced | Containerized code execution, security isolation | Streamable HTTP | Containerized |
+| [04-database-operations](./04-database-operations/) | Intermediate | SQLite CRUD operations, schema management | stdio | Local |
+| [05-api-to-mcp](./05-api-to-mcp/) | Advanced | API wrapping and native MCP conversion patterns | stdio | Local |
 
 
 ## Repository Structure
 
 ```
-example-mcp-servers/
+bob-mcp-labs/
 ├── 01-simple-calculator/      # Minimal single-file server
 ├── 02-structured-calculator/  # Modular package structure
 ├── 03-file-operations/        # File system operations
-├── 04-web-scraping/           # Web content extraction
-├── 05-database-operations/    # SQLite database management
-├── 06-api-integration/        # Real-world API patterns
-└── 07-code-sandbox/           # Containerized code execution (Docker/Podman)
+├── 04-database-operations/    # SQLite database management
+└── 05-api-to-mcp/             # API wrapping and native MCP conversion
 ```
 
 ### Configuration Tips
@@ -52,7 +48,7 @@ example-mcp-servers/
 - **Local vs Global**: Use `.bob/mcp.json` for project-specific servers, or configure globally in Bob's settings
 - **Virtual Environments**: The `command` should point to the Python executable inside each lab's virtual environment
 - **Windows Users**: Use Windows path format (e.g., `C:\\path\\to\\venv\\Scripts\\python.exe`)
-- **Lab 07**: Require Podman and have different configuration patterns (see their READMEs)
+- **Lab 05**: Uses `uv` for dependency management and demonstrates both wrapper and native MCP patterns
 
 ## Key Features
 

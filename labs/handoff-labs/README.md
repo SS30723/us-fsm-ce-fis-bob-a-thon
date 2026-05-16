@@ -39,12 +39,12 @@ Create custom Bob modes for your workflows. Includes 30-min guide, 5 examples, a
 ---
 
 ### 4. Example MCP Servers
-**File:** [`ibm-bob-example-mcp-servers-main/README.md`](ibm-bob-example-mcp-servers-main/README.md)
+**File:** [`bob-mcp-labs/README.md`](bob-mcp-labs/README.md)
 **Duration:** 30 min - 3+ hours | **Level:** Beginner to Advanced
 
-Eight production-ready MCP server examples using FastMCP: calculator, file operations, web scraping, database operations, API integration, containerized execution.
+Five production-ready MCP server examples using FastMCP: simple calculator, structured calculator, file operations, database operations, and API-to-MCP conversion patterns.
 
-**Prerequisites:** Python 3.8+, pip (Podman for Lab 07)
+**Prerequisites:** Python 3.8+, uv (FastAPI for Lab 05)
 
 ---
 
