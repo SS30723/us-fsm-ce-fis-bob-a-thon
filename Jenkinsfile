@@ -231,6 +231,66 @@ Provide:
             }
         }
 
+        stage('DCR') {
+            options {
+                timeout(time: 5, unit: 'MINUTES')
+            }
+            steps {
+                script {
+                    catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                        echo '════════════════════════════════════════════════════════'
+                        echo '  📋 Deployment Change Request (DCR) Generation'
+                        echo '════════════════════════════════════════════════════════'
+
+                        // Gather change material into workspace files
+                        sh '''
+                            git config --global --add safe.directory "$WORKSPACE"
+                            
+                            # Commit log
+                            git log origin/main..HEAD --pretty=format:'%h %s' > dcr-commits.txt || : > dcr-commits.txt
+                            
+                            # Diffstat
+                            git diff origin/main...HEAD --stat > dcr-diffstat.txt || : > dcr-diffstat.txt
+                            
+                            # Context metadata
+                            echo "BUILD_NUMBER=${BUILD_NUMBER}" > dcr-context.txt
+                            echo "BRANCH=$(git rev-parse --abbrev-ref HEAD)" >> dcr-context.txt
+                            echo "JIRA_PROJECT=KAN" >> dcr-context.txt
+                        '''
+
+                        // Build prompt for Bob
+                        def prompt = """
+Read the following files and produce a Deployment Change Request (DCR) per the mode's rules:
+
+- dcr-commits.txt (commit history)
+- dcr-diffstat.txt (file change statistics)
+- dcr-context.txt (build metadata)
+- bob-pr-review.md (if present)
+- bob-test-analysis.md (if present)
+
+Generate a comprehensive DCR document suitable for filing as a Jira ticket.
+"""
+
+                        // Invoke Bob with DCR mode
+                        def dcr = askBob(prompt, 'pipeline-dcr-jira-reporter')
+
+                        echo dcr
+                        echo '════════════════════════════════════════════════════════'
+
+                        // Save DCR for archiving
+                        writeFile file: 'deployment-change-request.md', text: dcr
+                    }
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'deployment-change-request.md,dcr-*.txt',
+                                   allowEmptyArchive: true,
+                                   fingerprint: true
+                }
+            }
+        }
+
         stage('Security Analysis') {
             options {
                 timeout(time: 15, unit: 'MINUTES')
