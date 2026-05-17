@@ -159,7 +159,7 @@ Read git-diff.txt and produce a concise PR overview with:
 - Watch for
 """
 
-                        def analysis = askBob(prompt, 'pipeline-git-diff-overview')
+                        def analysis = askBob(prompt, 'solution-pipeline-git-diff-overview')
 
                         echo analysis
                         echo '════════════════════════════════════════════════════════'
@@ -211,7 +211,7 @@ Provide:
 4. Priority of fixes (critical, high, medium, low)
 """
 
-                            def analysis = askBob(prompt, 'pipeline-test-failure-analyzer')
+                            def analysis = askBob(prompt, 'solution-pipeline-test-failure-analyzer')
 
                             echo analysis
                             echo '════════════════════════════════════════════════════════'
@@ -272,7 +272,7 @@ Generate a comprehensive DCR document suitable for filing as a Jira ticket.
 """
 
                         // Invoke Bob with DCR mode
-                        def dcr = askBob(prompt, 'pipeline-dcr-jira-reporter')
+                        def dcr = askBob(prompt, 'solution-pipeline-dcr-jira-reporter')
 
                         echo dcr
                         echo '════════════════════════════════════════════════════════'

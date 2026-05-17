@@ -156,7 +156,7 @@ customModes:
       - If no findings or all findings are low-severity, say so clearly in one sentence
       - Group related findings that share a root cause or fix
       - Focus on the top 3-5 highest priority items - don't list every minor issue
-  - slug: pipeline-git-diff-overview
+  - slug: solution-pipeline-git-diff-overview
     name: 📊 Git Diff Overview
     description: Quick risk-oriented overview of git diffs for Jenkins console output
     roleDefinition: |
@@ -233,7 +233,7 @@ customModes:
       - - edit
         - fileRegex: (src/test/.*\.java$|pom\.xml$)
           description: Test files and Maven configuration only
-  - slug: pipeline-test-failure-analyzer
+  - slug: solution-pipeline-test-failure-analyzer
     name: 🔬 Test Failure Analyzer
     description: Diagnoses JUnit/Surefire test failures and proposes fixes for Jenkins pipelines
     roleDefinition: |
@@ -556,7 +556,7 @@ customModes:
       - Group related findings that share a root cause or fix
       - Focus on the top 3-5 highest priority items - don't list every minor issue
 
-  - slug: pipeline-dcr-jira-reporter
+  - slug: solution-pipeline-dcr-jira-reporter
     name: 📋 DCR Jira Reporter
     description: Generates Deployment Change Request (DCR) documents and files them as Jira tickets
     roleDefinition: |
