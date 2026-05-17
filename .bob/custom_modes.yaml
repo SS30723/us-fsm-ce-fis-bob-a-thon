@@ -82,3 +82,4 @@ customModes:
       - - edit
         - fileRegex: (Jenkinsfile.*|\.bob/custom_modes\.yaml)$
           description: Jenkinsfile and Bob custom modes configuration only
+
