@@ -5,6 +5,7 @@
 - [Overview of Lab 1](#overview-of-lab-1)
   - [What you'll build in Lab 1](#what-youll-build-in-lab-1)
 - [Before you start](#before-you-start)
+- [Part 0 — Learn a little about the provided modes you'll be using](#part-0--learn-a-little-about-the-provided-modes-youll-be-using)
 - [Part 1 — Add the `askBob` helper to your Jenkinsfile](#part-1--add-the-askbob-helper-to-your-jenkinsfile)
 - [Part 2 - Use Bob to analyze git diff](#part-2---use-bob-to-analyze-git-diff)
 - [Part 3 - Create the `pipeline-git-diff-overview` mode](#part-3---create-the-pipeline-git-diff-overview-mode)
@@ -37,6 +38,20 @@ By the end, every push triggers a structured PR review in your Jenkins console �
 
 - [ ] Lab 0 complete (branch created, pipeline pointed at it, one successful `Checkout`-only build)
 - [ ] You're on your working branch (e.g. `user1-labs`)
+
+---
+
+## Part 0 — Learn a little about the provided modes you'll be using
+
+This morning's intro covered modes and custom modes. From here on out, every lab leans on two custom modes that ship with this repo:
+
+- **Mode Writer** (`mode-writer`) — used in most labs to create new custom modes. By default it may only write the mode definition into `.bob/custom_modes.yaml`, but you can ask it explicitly to generate **rules files** (or add them yourself later) to sharpen the mode's behavior beyond what fits in a single YAML block.
+- **Jenkins Pipeline Integration** (`jenkins-bob-integration`) — used in every lab that touches the Jenkinsfile. It's been pre-loaded with the specifics of this workshop's pipeline environment (containers, the `askBob` helper, our credential pattern) so you spend time on the lab's goal instead of debugging environment quirks.
+
+Take a quick glance at the rules files behind each mode to see how customizable a Bob mode can get:
+
+- `.bob/rules-mode-writer/` (4 files)
+- `.bob/rules-jenkins-bob-integration/` (8 files)
 
 ---
 

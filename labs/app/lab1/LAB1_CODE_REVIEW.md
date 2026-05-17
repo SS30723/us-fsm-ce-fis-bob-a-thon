@@ -168,6 +168,8 @@ Each finding has **Fix with Bob** / **Mark as Resolved** / **Dismiss**. Use **Fi
 
 `/review` won't always emphasize your domain's specific concerns — audit logging on money movement, `@Transactional` discipline, money comparisons. A custom code-review mode pins the lens.
 
+This morning's intro covered modes and custom modes. To build your own, this repo ships with the **Mode Writer** (`mode-writer`) custom mode — a Bob mode whose whole job is to write other Bob modes. By default it may only write the mode definition into `.bob/custom_modes.yaml`, but you can ask it explicitly to generate **rules files** (or add them yourself later) to sharpen the mode's behavior beyond what fits in a single YAML block. Take a quick glance at `.bob/rules-mode-writer/` (4 files) to see how customizable a Bob mode can get.
+
 Switch to **🪄 Mode Writer** in a new task and paste:
 
 ```
