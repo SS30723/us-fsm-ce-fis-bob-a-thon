@@ -1,6 +1,6 @@
 # OpenShift Basics with a Custom MCP Server
 
-In this lab we will explore interactionw with Red Hat OpenShift container platform using a custom MCP server.
+In this lab we will explore interaction with Red Hat OpenShift container platform using a custom MCP server.
 
 ## Features
 
