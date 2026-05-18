@@ -883,7 +883,7 @@ Open the archived artifacts from the build page to review:
 
 **Note:** The security stage is designed to block deployment if CRITICAL issues are detected. Review the console output and security reports to understand what needs to be fixed before the next deployment.
 
-For detailed pipeline execution and troubleshooting, refer to `labs/sre/lab3/PIPELINE_EXECUTION_GUIDE.md`.
+
 
 **Recommended workflow after finishing this lab:**
 ```bash
@@ -895,7 +895,7 @@ git commit -m "lab: add comprehensive security analysis"
 git push origin main
 ```
 
-Then follow `labs/lab3/PIPELINE_EXECUTION_GUIDE.md` step by step to test the pipeline in Jenkins.
+
 
 **Expected Pipeline Behavior with injected vulnerabilities:**
 1. Checkout stage passes
