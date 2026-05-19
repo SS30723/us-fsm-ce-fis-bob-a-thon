@@ -38,6 +38,22 @@ def routeJiraSecret(String jobName) {
     return "jira-creds-${letters[letterIdx]}"
 }
 
+def askBob(String prompt, String mode = null) {
+    container('bob') {
+        def promptFile = ".bob-prompt-${System.currentTimeMillis()}.txt"
+        writeFile file: promptFile, text: prompt
+
+        def modeFlag = mode ? "--chat-mode ${mode}" : ""
+        def analysis = sh(
+            script: """bob ${modeFlag} -p "\$(cat ${promptFile})" --hide-intermediary-output""",
+            returnStdout: true
+        ).trim()
+
+        sh "rm -f ${promptFile}"
+        return analysis
+    }
+}
+
 def jiraSecret = routeJiraSecret(env.JOB_NAME ?: '')
 
 pipeline {
