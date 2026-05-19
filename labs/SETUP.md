@@ -33,40 +33,91 @@ Follow your platform's forking process. Consult your instructor if you need assi
 
 ---
 
-## Step 2: Clone Your Fork
+## Step 2: Create a Personal Access Token (Private Repositories Only)
+
+**Skip this step if your instructor told you the repository is public.**
+
+If the repository is private, you'll need a Personal Access Token (PAT) to authenticate when cloning and pushing changes.
+
+### 2a. Create the PAT on GitHub
+
+1. Go to your GitHub tokens page:
+   - **GitHub.com**: `https://github.com/settings/tokens`
+   - **GitHub Enterprise**: `https://github.ibm.com/settings/tokens` (or your organization's URL)
+   - Your instructor will tell you which to use
+
+2. Click **Generate new token → Generate new token (classic)**
+
+3. Configure the token:
+   - **Note:** `bob-a-thon workshop`
+   - **Expiration:** 7 or 30 days is fine
+   - **Select scopes:** check only **`repo`** (this grants full control of private repositories)
+
+4. Click **Generate token** at the bottom
+
+5. **Copy the token immediately** — GitHub won't show it to you again
+   - Save it in a secure location (password manager recommended)
+   - You'll use this token in place of your password when cloning
+
+### 2b. Understanding PAT Usage
+
+When cloning or pushing to a private repository, Git will prompt for credentials:
+- **Username:** Your GitHub username
+- **Password:** Paste your PAT (not your actual GitHub password)
+
+Alternatively, you can embed the PAT in the clone URL (see Step 3 below).
+
+---
+
+## Step 3: Clone Your Fork
 
 Once you've forked the repository, clone it to your local machine:
 
-```bash
-# Replace <YOUR_USERNAME> and <REPO_URL> with your actual values
-git clone <REPO_URL>
+### For Public Repositories
 
-# Example for GitHub:
-# git clone https://github.com/<YOUR_USERNAME>/us-fsm-ce-fis-bob-a-thon.git
+```bash
+# Replace <YOUR_USERNAME> with your actual GitHub username
+git clone https://github.com/<YOUR_USERNAME>/us-fsm-ce-fis-bob-a-thon.git
 
 # Navigate into the repository
 cd us-fsm-ce-fis-bob-a-thon
 ```
 
-### If Using a Private Repository
+### For Private Repositories
 
-If the repository is private, you may need to authenticate:
-
-**Using HTTPS with Personal Access Token (PAT):**
+**Option A: Clone with PAT embedded in URL**
 ```bash
+# Replace <YOUR_PAT> and <YOUR_USERNAME> with your actual values
 git clone https://<YOUR_PAT>@github.com/<YOUR_USERNAME>/us-fsm-ce-fis-bob-a-thon.git
+
+# Navigate into the repository
+cd us-fsm-ce-fis-bob-a-thon
 ```
 
-**Using SSH:**
+**Option B: Clone normally and enter PAT when prompted**
+```bash
+# Clone the repository
+git clone https://github.com/<YOUR_USERNAME>/us-fsm-ce-fis-bob-a-thon.git
+
+# Git will prompt for credentials:
+# Username: <your-github-username>
+# Password: <paste-your-PAT-here>
+
+# Navigate into the repository
+cd us-fsm-ce-fis-bob-a-thon
+```
+
+**Option C: Using SSH (if you have SSH keys configured)**
 ```bash
 git clone git@github.com:<YOUR_USERNAME>/us-fsm-ce-fis-bob-a-thon.git
-```
 
-> **Note:** Your instructor will provide guidance on authentication if needed.
+# Navigate into the repository
+cd us-fsm-ce-fis-bob-a-thon
+```
 
 ---
 
-## Step 3: Verify Your Setup
+## Step 4: Verify Your Setup
 
 Confirm everything is working:
 
@@ -86,7 +137,7 @@ ls -la
 
 ---
 
-## Step 4: Open in Bob IDE
+## Step 5: Open in Bob IDE
 
 1. Launch Bob IDE
 2. Open the cloned repository:
@@ -98,7 +149,7 @@ ls -la
 
 ---
 
-## Step 5: Configure Git (If Needed)
+## Step 6: Configure Git (If Needed)
 
 If this is your first time using Git on this machine, configure your identity:
 
