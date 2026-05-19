@@ -155,6 +155,62 @@ spec:
             }
         }
 
+        stage('PR Review') {
+            options {
+                timeout(time: 5, unit: 'MINUTES')
+            }
+            steps {
+                script {
+                    echo '════════════════════════════════════════════════════════'
+                    echo '  🤖 Bob PR Review Analysis'
+                    echo "  Started: ${new Date()}"
+                    echo '════════════════════════════════════════════════════════'
+                    
+                    catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                        // Configure git safe directory and capture diff
+                        sh '''
+                            git config --global --add safe.directory "$WORKSPACE"
+                            git diff origin/main...HEAD > git-diff.txt || : > git-diff.txt
+                        '''
+                        
+                        // Build prompt for Bob
+                        def prompt = """
+Read git-diff.txt and produce a senior developer PR overview.
+
+Analyze the changes and provide:
+1. Summary: What changed (1-2 sentences per notable change)
+2. Risk: Assign risk level (high/medium/low) for each change
+3. Watch for: Specific concerns (null-safety, concurrency, behavior changes, security, performance, missing tests)
+
+Keep it concise and actionable.
+"""
+                        
+                        // Run Bob analysis
+                        def analysis = askBob(prompt, 'pipeline-git-diff-overview')
+                        
+                        // Display analysis
+                        echo ''
+                        echo analysis
+                        echo ''
+                        
+                        // Save for archiving
+                        writeFile file: 'bob-pr-review.md', text: analysis
+                    }
+                    
+                    echo "  Completed: ${new Date()}"
+                    echo "  Full report: bob-pr-review.md (archived)"
+                    echo '════════════════════════════════════════════════════════'
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'bob-pr-review.md,git-diff.txt',
+                                   allowEmptyArchive: true,
+                                   fingerprint: true
+                }
+            }
+        }
+
         // ── Lab 1: PR / Git Diff Review ──────────────────────────
         //    Add a stage here that runs Bob in a "senior developer"
         //    mode against the git diff. See labs/LAB1_PR_REVIEW.md.
